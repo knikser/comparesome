@@ -15,7 +15,7 @@ export function AppLayout() {
       <header className="top-nav px-3 py-3 mb-4">
         <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
           <div>
-            <p className="mb-0 fw-semibold text-primary-emphasis">CompaResome</p>
+            <p className="mb-0 fw-semibold text-primary-emphasis">сравнилка</p>
             <h1 className="h4 mb-0">Decision workspace</h1>
           </div>
           <nav className="nav nav-pills gap-2">
