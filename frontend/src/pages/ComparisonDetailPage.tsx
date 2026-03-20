@@ -7,11 +7,11 @@ import type { ComparisonDetail, Variant } from '../types/api';
 function ExistingRating({ variant, username }: { variant: Variant; username?: string }) {
   const mine = variant.ratings.find((r) => r.username === username);
   if (!mine) {
-    return <p className="subtle-text mb-2">No personal rating yet.</p>;
+    return <p className="text-subtle mb-2">No personal rating yet.</p>;
   }
   return (
-    <p className="subtle-text mb-2">
-      Your rank: {mine.rank} | Pros: {mine.pros || '-'} | Cons: {mine.cons || '-'}
+    <p className="text-subtle mb-2">
+      Your rank: {mine.rank} · Pros: {mine.pros || '-'} · Cons: {mine.cons || '-'}
     </p>
   );
 }
@@ -73,66 +73,53 @@ export function ComparisonDetailPage() {
   };
 
   if (error) {
-    return <div className="alert alert-danger">{error}</div>;
+    return <div className="error-banner">{error}</div>;
   }
   if (!detail) {
-    return <div className="alert alert-light border">Loading comparison...</div>;
+    return <div className="loading-banner">Loading comparison...</div>;
   }
 
   return (
-    <div className="d-grid gap-4">
-      <section className="card section-card">
-        <div className="card-body">
-          <h2 className="h4 page-title">{detail.comparison.name}</h2>
-          <p className="subtle-text mb-0">
-            Participants: {detail.participants.map((p) => p.username).join(', ')}
-          </p>
-        </div>
+    <div className="grid gap-4">
+      <section className="surface-card p-5">
+        <h2 className="mb-1 text-2xl font-semibold text-slate-900">{detail.comparison.name}</h2>
+        <p className="text-subtle">Participants: {detail.participants.map((p) => p.username).join(', ')}</p>
       </section>
 
-      <section className="card section-card">
-        <div className="card-body">
-          <h3 className="h5 page-title">Add variant</h3>
-          <form onSubmit={onCreateVariant}>
-            <div className="mb-3">
-              <label className="form-label">Variant title</label>
-              <input
-                className="form-control"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Description</label>
-              <textarea
-                className="form-control"
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={creatingVariant}>
-              {creatingVariant ? 'Adding...' : 'Add variant'}
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <section className="card section-card">
-        <div className="card-body">
-          <h3 className="h5 page-title">Variants</h3>
-          {detail.variants.length === 0 ? <p className="mb-0">No variants yet.</p> : null}
-          <div className="d-grid gap-3">
-            {detail.variants.map((variant) => (
-              <VariantCard
-                key={variant.id}
-                variant={variant}
-                username={user?.username}
-                onRateVariant={onRateVariant}
-              />
-            ))}
+      <section className="surface-card p-5">
+        <h3 className="page-title">Add variant</h3>
+        <form onSubmit={onCreateVariant}>
+          <div className="mb-4">
+            <label className="field-label">Variant title</label>
+            <input className="text-input" value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
+          <div className="mb-4">
+            <label className="field-label">Description</label>
+            <textarea
+              className="text-input"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="primary-btn" disabled={creatingVariant}>
+            {creatingVariant ? 'Adding...' : 'Add variant'}
+          </button>
+        </form>
+      </section>
+
+      <section className="surface-card p-5">
+        <h3 className="page-title">Variants</h3>
+        {detail.variants.length === 0 ? <p>No variants yet.</p> : null}
+        <div className="grid gap-3">
+          {detail.variants.map((variant) => (
+            <VariantCard
+              key={variant.id}
+              variant={variant}
+              username={user?.username}
+              onRateVariant={onRateVariant}
+            />
+          ))}
         </div>
       </section>
     </div>
@@ -164,20 +151,20 @@ function VariantCard({
   };
 
   return (
-    <article className="variant-card p-3">
-      <h4 className="h6 mb-1">{variant.title}</h4>
-      <p className="mb-1 subtle-text">{variant.description || 'No description.'}</p>
-      <p className="mb-2 subtle-text">
-        Created by {variant.createdByName} | Avg rank {variant.averageRank.toFixed(2)} ({variant.ratingCount} ratings)
+    <article className="rounded-xl border border-blue-100 bg-white/70 p-4 shadow-sm">
+      <h4 className="mb-1 text-base font-semibold text-slate-900">{variant.title}</h4>
+      <p className="text-subtle mb-1">{variant.description || 'No description.'}</p>
+      <p className="text-subtle mb-2">
+        Created by {variant.createdByName} · Avg rank {variant.averageRank.toFixed(2)} ({variant.ratingCount} ratings)
       </p>
       <ExistingRating variant={variant} username={username} />
 
       <form onSubmit={submit}>
-        <div className="row g-3">
-          <div className="col-12 col-md-3">
-            <label className="form-label">Rank (1..10)</label>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+          <div className="md:col-span-3">
+            <label className="field-label">Rank (1..10)</label>
             <input
-              className="form-control"
+              className="text-input"
               type="number"
               min={1}
               max={10}
@@ -185,16 +172,16 @@ function VariantCard({
               onChange={(e) => setRank(Number(e.target.value))}
             />
           </div>
-          <div className="col-12 col-md-4">
-            <label className="form-label">Pros</label>
-            <input className="form-control" value={pros} onChange={(e) => setPros(e.target.value)} />
+          <div className="md:col-span-4">
+            <label className="field-label">Pros</label>
+            <input className="text-input" value={pros} onChange={(e) => setPros(e.target.value)} />
           </div>
-          <div className="col-12 col-md-4">
-            <label className="form-label">Cons</label>
-            <input className="form-control" value={cons} onChange={(e) => setCons(e.target.value)} />
+          <div className="md:col-span-4">
+            <label className="field-label">Cons</label>
+            <input className="text-input" value={cons} onChange={(e) => setCons(e.target.value)} />
           </div>
-          <div className="col-12 col-md-1 d-flex align-items-end">
-            <button type="submit" className="btn btn-outline-primary w-100" disabled={saving}>
+          <div className="md:col-span-1 md:self-end">
+            <button type="submit" className="ghost-btn w-full" disabled={saving}>
               {saving ? '...' : 'Save'}
             </button>
           </div>
@@ -202,9 +189,9 @@ function VariantCard({
       </form>
 
       {variant.ratings.length > 0 ? (
-        <details className="mt-3">
-          <summary>All personal ratings</summary>
-          <ul className="mb-0 mt-2">
+        <details className="mt-3 rounded-lg border border-slate-200 bg-white/80 p-3">
+          <summary className="cursor-pointer text-sm font-medium text-slate-700">All personal ratings</summary>
+          <ul className="mt-2 ml-4 list-disc space-y-1 text-sm">
             {variant.ratings.map((rating) => (
               <li key={`${rating.variantId}-${rating.userId}`}>
                 {rating.username}: {rating.rank} (pros: {rating.pros || '-'}, cons: {rating.cons || '-'})

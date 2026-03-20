@@ -36,32 +36,32 @@ export function ChangePasswordPage() {
   };
 
   return (
-    <div className="auth-screen">
-      <form className="card section-card auth-card p-4" onSubmit={onSubmit}>
-        <h2 className="h4 mb-1">Change your password</h2>
-        <p className="subtle-text mb-4">First login requires changing the default admin password.</p>
-        <div className="mb-3">
-          <label className="form-label">Current password</label>
+    <div className="flex min-h-screen items-center justify-center p-5">
+      <form className="surface-card w-full max-w-md p-6 sm:p-7" onSubmit={onSubmit}>
+        <h2 className="mb-1 text-2xl font-semibold text-slate-900">Change your password</h2>
+        <p className="text-subtle mb-5">First login requires changing the default admin password.</p>
+        <div className="mb-4">
+          <label className="field-label">Current password</label>
           <input
-            className="form-control"
+            className="text-input"
             type="password"
             value={oldPassword}
             onChange={(e) => setOldPassword(e.target.value)}
             autoComplete="current-password"
           />
         </div>
-        <div className="mb-3">
-          <label className="form-label">New password (min 6 chars)</label>
+        <div className="mb-4">
+          <label className="field-label">New password (min 6 chars)</label>
           <input
-            className="form-control"
+            className="text-input"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             autoComplete="new-password"
           />
         </div>
-        {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-        <button disabled={loading} type="submit" className="btn btn-primary w-100 mt-2">
+        {error ? <div className="error-banner">{error}</div> : null}
+        <button disabled={loading} type="submit" className="primary-btn mt-4 w-full">
           {loading ? 'Updating...' : 'Update password'}
         </button>
       </form>
