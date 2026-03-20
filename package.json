@@ -1,0 +1,11 @@
+{
+  "name": "comparesome-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "frontend:dev": "pnpm --filter frontend dev",
+    "frontend:build": "pnpm --filter frontend build",
+    "frontend:test": "pnpm --filter frontend test"
+  }
+}
