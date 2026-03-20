@@ -67,66 +67,60 @@ export function ComparisonsPage() {
   };
 
   return (
-    <div className="row g-4">
-      <section className="col-12 col-xl-6">
-        <div className="card section-card h-100">
-          <div className="card-body">
-            <h2 className="h5 page-title">Create comparison entity</h2>
-            <p className="subtle-text">Example entity: flats, jobs, suppliers, etc.</p>
-            <form onSubmit={onCreate}>
-              <div className="mb-3">
-                <label className="form-label">Entity name</label>
-                <input
-                  className="form-control"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-              <p className="mb-2">Select up to 4 additional participants:</p>
-              <div className="row row-cols-1 row-cols-md-2 g-2 mb-3">
-                {availableUsers.map((candidate) => (
-                  <div className="col" key={candidate.id}>
-                    <label className="form-check border rounded px-3 py-2 w-100">
-                      <input
-                        type="checkbox"
-                        className="form-check-input me-2"
-                        checked={selectedUsers.includes(candidate.id)}
-                        onChange={() => toggleUser(candidate.id)}
-                      />
-                      <span className="form-check-label">{candidate.username}</span>
-                    </label>
-                  </div>
-                ))}
-              </div>
-              <div className="mb-3">
-                <span className="badge text-bg-light border">
-                  Selected users: {selectedUsers.length}/4 (you are included automatically)
-                </span>
-              </div>
-              {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-              <button disabled={loading} type="submit" className="btn btn-primary">
-                {loading ? 'Creating...' : 'Create comparison'}
-              </button>
-            </form>
-          </div>
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <section>
+        <div className="surface-card h-full p-5">
+          <h2 className="page-title">Create comparison entity</h2>
+          <p className="text-subtle mb-4">Example entity: flats, jobs, suppliers, etc.</p>
+          <form onSubmit={onCreate}>
+            <div className="mb-4">
+              <label className="field-label">Entity name</label>
+              <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} required />
+            </div>
+            <p className="mb-2 text-sm font-medium text-slate-700">Select up to 4 additional participants:</p>
+            <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {availableUsers.map((candidate) => (
+                <label
+                  key={candidate.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-sm text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/60"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-200"
+                    checked={selectedUsers.includes(candidate.id)}
+                    onChange={() => toggleUser(candidate.id)}
+                  />
+                  <span>{candidate.username}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mb-4">
+              <span className="chip">
+                Selected users: {selectedUsers.length}/4 (you are included automatically)
+              </span>
+            </div>
+            {error ? <div className="error-banner mb-4">{error}</div> : null}
+            <button disabled={loading} type="submit" className="primary-btn">
+              {loading ? 'Creating...' : 'Create comparison'}
+            </button>
+          </form>
         </div>
       </section>
 
-      <section className="col-12 col-xl-6">
-        <div className="card section-card h-100">
-          <div className="card-body">
-            <h2 className="h5 page-title">Your comparisons</h2>
-            {comparisons.length === 0 ? <p className="mb-0">No comparisons created yet.</p> : null}
-            <ul className="list-group list-group-flush">
-              {comparisons.map((cmp) => (
-                <li key={cmp.id} className="list-group-item px-0 d-flex justify-content-between gap-2">
-                  <Link to={`/comparisons/${cmp.id}`}>{cmp.name}</Link>
-                  <span className="badge rounded-pill text-bg-light border">{cmp.variantsCount} variants</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+      <section>
+        <div className="surface-card h-full p-5">
+          <h2 className="page-title">Your comparisons</h2>
+          {comparisons.length === 0 ? <p>No comparisons created yet.</p> : null}
+          <ul className="divide-y divide-slate-100">
+            {comparisons.map((cmp) => (
+              <li key={cmp.id} className="flex items-center justify-between gap-2 py-3">
+                <Link className="link" to={`/comparisons/${cmp.id}`}>
+                  {cmp.name}
+                </Link>
+                <span className="chip">{cmp.variantsCount} variants</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </div>
