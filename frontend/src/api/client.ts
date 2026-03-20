@@ -7,6 +7,7 @@ import type {
   User,
   Variant
 } from '../types/api';
+import { getCurrentLanguage } from '../i18n';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -28,7 +29,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     headers.set('Authorization', `Bearer ${options.token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const url = new URL(`${API_URL}${path}`, window.location.origin);
+  url.searchParams.set('lang', getCurrentLanguage());
+
+  const response = await fetch(url.toString(), {
     ...options,
     headers
   });
@@ -49,6 +53,15 @@ export const api = {
     }),
 
   me: (token: string) => request<{ user: User }>('/me', { token }),
+
+  meSettings: (token: string) => request<{ language: 'ru' | 'en' }>('/me/settings', { token }),
+
+  updateMeSettings: (token: string, language: 'ru' | 'en') =>
+    request<{ user: User }>('/me/settings', {
+      token,
+      method: 'PUT',
+      body: JSON.stringify({ language })
+    }),
 
   changePassword: (token: string, oldPassword: string, newPassword: string) =>
     request<{ token: string; user: User }>('/auth/change-password', {

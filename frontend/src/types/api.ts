@@ -3,6 +3,7 @@ export type User = {
   username: string;
   isAdmin: boolean;
   mustChangePassword: boolean;
+  language: 'ru' | 'en';
   createdAt: string;
 };
 

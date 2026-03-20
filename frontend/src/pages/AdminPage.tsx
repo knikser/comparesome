@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../i18n';
 import type { FeatureFlag, Settings, User } from '../types/api';
 
 export function AdminPage() {
   const { token } = useAuth();
+  const { t } = useLanguage();
   const [users, setUsers] = useState<User[]>([]);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -27,7 +29,7 @@ export function AdminPage() {
       setFlags(flagsRes.flags);
       setSettings(settingsRes);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load admin panel');
+      setError(err instanceof ApiError ? err.message : t('admin.loadError'));
     }
   };
 
@@ -47,7 +49,7 @@ export function AdminPage() {
       setIsAdmin(false);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create user');
+      setError(err instanceof ApiError ? err.message : t('admin.createUserError'));
     }
   };
 
@@ -59,7 +61,7 @@ export function AdminPage() {
       await api.adminUpdateFlag(token, flag.key, !flag.enabled);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to update feature flag');
+      setError(err instanceof ApiError ? err.message : t('admin.updateFlagError'));
     }
   };
 
@@ -72,7 +74,7 @@ export function AdminPage() {
       const next = await api.adminUpdateSettings(token, settings.maxVariantsPerUser);
       setSettings(next);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to update settings');
+      setError(err instanceof ApiError ? err.message : t('admin.updateSettingsError'));
     }
   };
 
@@ -81,11 +83,11 @@ export function AdminPage() {
       {error ? <div className="alert alert-danger mb-0">{error}</div> : null}
       <section className="card section-card">
         <div className="card-body">
-          <h2 className="h5 page-title">Create user</h2>
+          <h2 className="h5 page-title">{t('admin.createUser')}</h2>
           <form onSubmit={onCreateUser}>
             <div className="row g-3">
               <div className="col-12 col-md-5">
-                <label className="form-label">Username</label>
+                <label className="form-label">{t('admin.username')}</label>
                 <input
                   className="form-control"
                   value={username}
@@ -94,7 +96,7 @@ export function AdminPage() {
                 />
               </div>
               <div className="col-12 col-md-5">
-                <label className="form-label">Password</label>
+                <label className="form-label">{t('admin.password')}</label>
                 <input
                   className="form-control"
                   type="password"
@@ -113,13 +115,13 @@ export function AdminPage() {
                     onChange={(e) => setIsAdmin(e.target.checked)}
                   />
                   <label className="form-check-label" htmlFor="admin-user-switch">
-                    Admin
+                    {t('admin.admin')}
                   </label>
                 </div>
               </div>
               <div className="col-12">
                 <button type="submit" className="btn btn-primary">
-                  Create user
+                  {t('admin.create')}
                 </button>
               </div>
             </div>
@@ -129,14 +131,16 @@ export function AdminPage() {
 
       <section className="card section-card">
         <div className="card-body">
-          <h2 className="h5 page-title">Users</h2>
+          <h2 className="h5 page-title">{t('admin.users')}</h2>
           <ul className="list-group list-group-flush">
             {users.map((item) => (
               <li key={item.id} className="list-group-item px-0 d-flex justify-content-between gap-2">
                 <span>{item.username}</span>
                 <div className="d-flex flex-wrap gap-1">
-                  {item.isAdmin ? <span className="badge text-bg-primary">admin</span> : null}
-                  {item.mustChangePassword ? <span className="badge text-bg-warning">must change password</span> : null}
+                  {item.isAdmin ? <span className="badge text-bg-primary">{t('admin.badgeAdmin')}</span> : null}
+                  {item.mustChangePassword ? (
+                    <span className="badge text-bg-warning">{t('admin.badgeMustChangePassword')}</span>
+                  ) : null}
                 </div>
               </li>
             ))}
@@ -146,17 +150,17 @@ export function AdminPage() {
 
       <section className="card section-card">
         <div className="card-body">
-          <h2 className="h5 page-title">Feature flags</h2>
+          <h2 className="h5 page-title">{t('admin.featureFlags')}</h2>
           <ul className="list-group list-group-flush">
             {flags.map((flag) => (
               <li key={flag.key} className="list-group-item px-0 d-flex justify-content-between align-items-center">
                 <span>{flag.key}</span>
                 <div className="d-flex align-items-center gap-2">
                   <span className={`badge ${flag.enabled ? 'text-bg-success' : 'text-bg-secondary'}`}>
-                    {flag.enabled ? 'enabled' : 'disabled'}
+                    {flag.enabled ? t('admin.enabled') : t('admin.disabled')}
                   </span>
                   <button onClick={() => onToggleFlag(flag)} type="button" className="btn btn-sm btn-outline-secondary">
-                    Toggle
+                    {t('admin.toggle')}
                   </button>
                 </div>
               </li>
@@ -167,12 +171,12 @@ export function AdminPage() {
 
       <section className="card section-card">
         <div className="card-body">
-          <h2 className="h5 page-title">Settings</h2>
+          <h2 className="h5 page-title">{t('admin.settings')}</h2>
           {settings ? (
             <form onSubmit={onUpdateSettings}>
               <div className="row g-3 align-items-end">
                 <div className="col-12 col-md-5">
-                  <label className="form-label">Max variants per user per comparison</label>
+                  <label className="form-label">{t('admin.maxVariants')}</label>
                   <input
                     className="form-control"
                     type="number"
@@ -189,13 +193,13 @@ export function AdminPage() {
                 </div>
                 <div className="col-12 col-md-auto">
                   <button type="submit" className="btn btn-primary">
-                    Save settings
+                    {t('admin.saveSettings')}
                   </button>
                 </div>
               </div>
             </form>
           ) : (
-            <p className="mb-0">Loading settings...</p>
+            <p className="mb-0">{t('admin.loadingSettings')}</p>
           )}
         </div>
       </section>

@@ -2,9 +2,11 @@ import { FormEvent, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../i18n';
 
 export function ChangePasswordPage() {
   const { token, user, login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [oldPassword, setOldPassword] = useState('admin');
   const [newPassword, setNewPassword] = useState('');
@@ -28,7 +30,7 @@ export function ChangePasswordPage() {
       login(response.token, response.user);
       navigate('/');
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Password change failed';
+      const message = err instanceof ApiError ? err.message : t('changePassword.error');
       setError(message);
     } finally {
       setLoading(false);
@@ -38,10 +40,10 @@ export function ChangePasswordPage() {
   return (
     <div className="auth-screen">
       <form className="card section-card auth-card p-4" onSubmit={onSubmit}>
-        <h2 className="h4 mb-1">Change your password</h2>
-        <p className="subtle-text mb-4">First login requires changing the default admin password.</p>
+        <h2 className="h4 mb-1">{t('changePassword.title')}</h2>
+        <p className="subtle-text mb-4">{t('changePassword.hint')}</p>
         <div className="mb-3">
-          <label className="form-label">Current password</label>
+          <label className="form-label">{t('changePassword.current')}</label>
           <input
             className="form-control"
             type="password"
@@ -51,7 +53,7 @@ export function ChangePasswordPage() {
           />
         </div>
         <div className="mb-3">
-          <label className="form-label">New password (min 6 chars)</label>
+          <label className="form-label">{t('changePassword.new')}</label>
           <input
             className="form-control"
             type="password"
@@ -62,7 +64,7 @@ export function ChangePasswordPage() {
         </div>
         {error ? <div className="alert alert-danger py-2">{error}</div> : null}
         <button disabled={loading} type="submit" className="btn btn-primary w-100 mt-2">
-          {loading ? 'Updating...' : 'Update password'}
+          {loading ? t('changePassword.submitting') : t('changePassword.submit')}
         </button>
       </form>
     </div>
