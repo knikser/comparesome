@@ -1,0 +1,51 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose.yml'
+      - 'docker/**'
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_TARGET_PATH: ${{ secrets.DEPLOY_TARGET_PATH }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          PORT="${DEPLOY_PORT:-22}"
+          ssh-keyscan -p "$PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync repository
+        run: |
+          PORT="${DEPLOY_PORT:-22}"
+          rsync -avz --delete \
+            --exclude ".git" \
+            --exclude "frontend/node_modules" \
+            --exclude "frontend/dist" \
+            -e "ssh -p $PORT" \
+            ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_TARGET_PATH"
+
+      - name: Deploy services
+        run: |
+          PORT="${DEPLOY_PORT:-22}"
+          ssh -p "$PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_TARGET_PATH' && docker compose up --build -d"

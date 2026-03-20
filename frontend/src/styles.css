@@ -1,0 +1,127 @@
+:root {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.header nav {
+  display: flex;
+  gap: 1rem;
+}
+
+a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.card,
+.nested-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.nested-card {
+  margin: 0.75rem 0;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.two-columns {
+  grid-template-columns: 1fr 1fr;
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+input,
+textarea,
+button {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font: inherit;
+}
+
+button {
+  background: #0f172a;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.user-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .two-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
