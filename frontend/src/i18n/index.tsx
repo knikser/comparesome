@@ -7,7 +7,7 @@ const STORAGE_KEY = 'comparesome-language';
 
 const translations = {
   ru: {
-    'app.title': 'CompaResome',
+    'app.title': 'сравнилка',
     'app.subtitle': 'Пространство для принятия решений',
     'nav.dashboard': 'Дашборд',
     'nav.comparisons': 'Сравнения',
@@ -104,7 +104,7 @@ const translations = {
     'admin.loadingSettings': 'Загрузка настроек...'
   },
   en: {
-    'app.title': 'CompaResome',
+    'app.title': 'compare',
     'app.subtitle': 'Decision workspace',
     'nav.dashboard': 'Dashboard',
     'nav.comparisons': 'Comparisons',
