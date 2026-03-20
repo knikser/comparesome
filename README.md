@@ -69,6 +69,7 @@ Required backend env variables:
 
 - `DATABASE_DSN` (example: `postgresql://postgres:postgres@localhost:5432/comparesome?sslmode=disable`)
 - `JWT_SECRET` (any secure secret)
+- `CORS_ALLOWED_ORIGINS` (comma-separated list, default includes localhost + `http://158.160.231.213` + `каргины.рф`)
 - optional `PORT` (default `8080`)
 
 ## API overview
