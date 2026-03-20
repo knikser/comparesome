@@ -37,7 +37,7 @@ func main() {
 
 	store := service.NewStore(sqlDB)
 	jwtManager := auth.NewManager(cfg.JWTSecret, cfg.TokenTTLHours)
-	server := api.NewServer(store, jwtManager)
+	server := api.NewServer(store, jwtManager, cfg.CORSAllowedOrigins)
 
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.Port,

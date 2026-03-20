@@ -16,12 +16,32 @@ import (
 )
 
 type Server struct {
-	store      *service.Store
-	jwtManager *auth.Manager
+	store           *service.Store
+	jwtManager      *auth.Manager
+	allowedOrigins  map[string]struct{}
+	allowAllOrigins bool
 }
 
-func NewServer(store *service.Store, jwtManager *auth.Manager) *Server {
-	return &Server{store: store, jwtManager: jwtManager}
+func NewServer(store *service.Store, jwtManager *auth.Manager, allowedOrigins []string) *Server {
+	originsMap := make(map[string]struct{}, len(allowedOrigins))
+	allowAllOrigins := false
+	for _, origin := range allowedOrigins {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed == "" {
+			continue
+		}
+		if trimmed == "*" {
+			allowAllOrigins = true
+			continue
+		}
+		originsMap[trimmed] = struct{}{}
+	}
+	return &Server{
+		store:           store,
+		jwtManager:      jwtManager,
+		allowedOrigins:  originsMap,
+		allowAllOrigins: allowAllOrigins,
+	}
 }
 
 func (s *Server) Router() http.Handler {
@@ -72,7 +92,15 @@ func (s *Server) Router() http.Handler {
 
 func (s *Server) cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := strings.TrimSpace(r.Header.Get("Origin"))
+		if origin != "" {
+			w.Header().Add("Vary", "Origin")
+			if s.allowAllOrigins {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else if _, ok := s.allowedOrigins[origin]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+		}
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 		if r.Method == http.MethodOptions {
