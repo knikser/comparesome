@@ -2,10 +2,12 @@ import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../i18n';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const auth = useAuth();
+  const { t } = useLanguage();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin');
   const [error, setError] = useState('');
@@ -22,7 +24,7 @@ export function LoginPage() {
       auth.login(response.token, response.user);
       navigate(response.user.mustChangePassword ? '/change-password' : '/');
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Unknown login error';
+      const message = err instanceof ApiError ? err.message : t('login.error');
       setError(message);
       setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
@@ -33,10 +35,10 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-5">
       <form className="surface-card w-full max-w-md p-6 sm:p-7" onSubmit={onSubmit}>
-        <h2 className="mb-1 text-2xl font-semibold text-slate-900">Welcome back</h2>
-        <p className="text-subtle mb-5">Default admin credentials: admin / admin</p>
+        <h2 className="mb-1 text-2xl font-semibold text-slate-900">{t('login.title')}</h2>
+        <p className="text-subtle mb-5">{t('login.hint')}</p>
         <div className="mb-4">
-          <label className="field-label">Username</label>
+          <label className="field-label">{t('login.username')}</label>
           <input
             className={`text-input ${fieldErrors.username ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             value={username}
@@ -53,7 +55,7 @@ export function LoginPage() {
           {fieldErrors.username ? <p className="mt-1 text-sm text-red-600">{fieldErrors.username}</p> : null}
         </div>
         <div className="mb-4">
-          <label className="field-label">Password</label>
+          <label className="field-label">{t('login.password')}</label>
           <input
             className={`text-input ${fieldErrors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             type="password"
@@ -72,7 +74,7 @@ export function LoginPage() {
         </div>
         {error ? <div className="error-banner">{error}</div> : null}
         <button disabled={loading} type="submit" className="primary-btn mt-4 w-full">
-          {loading ? 'Signing in...' : 'Login'}
+          {loading ? t('login.submitting') : t('login.submit')}
         </button>
       </form>
     </div>

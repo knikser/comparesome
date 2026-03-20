@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../i18n';
 import type { FeatureFlag, Settings, User } from '../types/api';
 
 export function AdminPage() {
   const { token } = useAuth();
+  const { t } = useLanguage();
   const [users, setUsers] = useState<User[]>([]);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -29,7 +31,7 @@ export function AdminPage() {
       setFlags(flagsRes.flags);
       setSettings(settingsRes);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load admin panel');
+      setError(err instanceof ApiError ? err.message : t('admin.loadError'));
     }
   };
 
@@ -50,7 +52,7 @@ export function AdminPage() {
       setIsAdmin(false);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create user');
+      setError(err instanceof ApiError ? err.message : t('admin.createUserError'));
       setCreateUserFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     }
   };
@@ -63,7 +65,7 @@ export function AdminPage() {
       await api.adminUpdateFlag(token, flag.key, !flag.enabled);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to update feature flag');
+      setError(err instanceof ApiError ? err.message : t('admin.updateFlagError'));
     }
   };
 
@@ -77,7 +79,7 @@ export function AdminPage() {
       const next = await api.adminUpdateSettings(token, settings.maxVariantsPerUser);
       setSettings(next);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to update settings');
+      setError(err instanceof ApiError ? err.message : t('admin.updateSettingsError'));
       setSettingsFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     }
   };
@@ -86,11 +88,11 @@ export function AdminPage() {
     <div className="grid gap-4">
       {error ? <div className="error-banner">{error}</div> : null}
       <section className="surface-card p-5">
-        <h2 className="page-title">Create user</h2>
+        <h2 className="page-title">{t('admin.createUser')}</h2>
         <form onSubmit={onCreateUser}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
             <div className="md:col-span-5">
-              <label className="field-label">Username</label>
+              <label className="field-label">{t('admin.username')}</label>
               <input
                 className={`text-input ${createUserFieldErrors.username ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
                 value={username}
@@ -109,7 +111,7 @@ export function AdminPage() {
               ) : null}
             </div>
             <div className="md:col-span-5">
-              <label className="field-label">Password</label>
+              <label className="field-label">{t('admin.password')}</label>
               <input
                 className={`text-input ${createUserFieldErrors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
                 type="password"
@@ -137,12 +139,12 @@ export function AdminPage() {
                   checked={isAdmin}
                   onChange={(e) => setIsAdmin(e.target.checked)}
                 />
-                <span>Admin</span>
+                <span>{t('admin.admin')}</span>
               </label>
             </div>
             <div className="md:col-span-12">
               <button type="submit" className="primary-btn">
-                Create user
+                {t('admin.create')}
               </button>
             </div>
           </div>
@@ -150,15 +152,19 @@ export function AdminPage() {
       </section>
 
       <section className="surface-card p-5">
-        <h2 className="page-title">Users</h2>
+        <h2 className="page-title">{t('admin.users')}</h2>
         <ul className="divide-y divide-slate-100">
           {users.map((item) => (
             <li key={item.id} className="flex items-center justify-between gap-2 py-3">
               <span>{item.username}</span>
               <div className="flex flex-wrap gap-1">
-                {item.isAdmin ? <span className="chip border-blue-200 bg-blue-50 text-blue-700">admin</span> : null}
+                {item.isAdmin ? (
+                  <span className="chip border-blue-200 bg-blue-50 text-blue-700">{t('admin.badgeAdmin')}</span>
+                ) : null}
                 {item.mustChangePassword ? (
-                  <span className="chip border-amber-200 bg-amber-50 text-amber-700">must change password</span>
+                  <span className="chip border-amber-200 bg-amber-50 text-amber-700">
+                    {t('admin.badgeMustChangePassword')}
+                  </span>
                 ) : null}
               </div>
             </li>
@@ -167,7 +173,7 @@ export function AdminPage() {
       </section>
 
       <section className="surface-card p-5">
-        <h2 className="page-title">Feature flags</h2>
+        <h2 className="page-title">{t('admin.featureFlags')}</h2>
         <ul className="divide-y divide-slate-100">
           {flags.map((flag) => (
             <li key={flag.key} className="flex items-center justify-between gap-3 py-3">
@@ -178,10 +184,10 @@ export function AdminPage() {
                     flag.enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'text-slate-500'
                   }`}
                 >
-                  {flag.enabled ? 'enabled' : 'disabled'}
+                  {flag.enabled ? t('admin.enabled') : t('admin.disabled')}
                 </span>
                 <button onClick={() => onToggleFlag(flag)} type="button" className="secondary-btn px-3 py-1.5">
-                  Toggle
+                  {t('admin.toggle')}
                 </button>
               </div>
             </li>
@@ -190,12 +196,12 @@ export function AdminPage() {
       </section>
 
       <section className="surface-card p-5">
-        <h2 className="page-title">Settings</h2>
+        <h2 className="page-title">{t('admin.settings')}</h2>
         {settings ? (
           <form onSubmit={onUpdateSettings}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-end">
               <div className="md:col-span-5">
-                <label className="field-label">Max variants per user per comparison</label>
+                <label className="field-label">{t('admin.maxVariants')}</label>
                 <input
                   className={`text-input ${settingsFieldErrors.maxVariantsPerUser ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
                   type="number"
@@ -220,13 +226,13 @@ export function AdminPage() {
               </div>
               <div className="md:col-span-2">
                 <button type="submit" className="primary-btn">
-                  Save settings
+                  {t('admin.saveSettings')}
                 </button>
               </div>
             </div>
           </form>
         ) : (
-          <p>Loading settings...</p>
+          <p>{t('admin.loadingSettings')}</p>
         )}
       </section>
     </div>

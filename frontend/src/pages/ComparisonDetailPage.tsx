@@ -2,22 +2,38 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { type TranslationKey, useLanguage } from '../i18n';
 import type { ComparisonDetail, Variant } from '../types/api';
 
-function ExistingRating({ variant, username }: { variant: Variant; username?: string }) {
+function ExistingRating({
+  variant,
+  username,
+  noRatingText,
+  yourRatingText
+}: {
+  variant: Variant;
+  username?: string;
+  noRatingText: string;
+  yourRatingText: (params: Record<string, string | number>) => string;
+}) {
   const mine = variant.ratings.find((r) => r.username === username);
   if (!mine) {
-    return <p className="text-subtle mb-2">No personal rating yet.</p>;
+    return <p className="text-subtle mb-2">{noRatingText}</p>;
   }
   return (
     <p className="text-subtle mb-2">
-      Your rank: {mine.rank} · Pros: {mine.pros || '-'} · Cons: {mine.cons || '-'}
+      {yourRatingText({
+        rank: mine.rank,
+        pros: mine.pros || '-',
+        cons: mine.cons || '-'
+      })}
     </p>
   );
 }
 
 export function ComparisonDetailPage() {
   const { token, user } = useAuth();
+  const { t } = useLanguage();
   const params = useParams();
   const comparisonId = Number(params.id);
   const [detail, setDetail] = useState<ComparisonDetail | null>(null);
@@ -37,7 +53,7 @@ export function ComparisonDetailPage() {
       setDetail(data);
       setLoadError('');
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : 'Failed to load comparison');
+      setLoadError(err instanceof ApiError ? err.message : t('comparison.loadError'));
     }
   };
 
@@ -59,7 +75,7 @@ export function ComparisonDetailPage() {
       setDescription('');
       await load();
     } catch (err) {
-      setCreateVariantError(err instanceof ApiError ? err.message : 'Failed to add variant');
+      setCreateVariantError(err instanceof ApiError ? err.message : t('comparison.createVariantError'));
       setCreateVariantFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setCreatingVariant(false);
@@ -78,21 +94,23 @@ export function ComparisonDetailPage() {
     return <div className="error-banner">{loadError}</div>;
   }
   if (!detail) {
-    return <div className="loading-banner">Loading comparison...</div>;
+    return <div className="loading-banner">{t('comparison.loading')}</div>;
   }
 
   return (
     <div className="grid gap-4">
       <section className="surface-card p-5">
         <h2 className="mb-1 text-2xl font-semibold text-slate-900">{detail.comparison.name}</h2>
-        <p className="text-subtle">Participants: {detail.participants.map((p) => p.username).join(', ')}</p>
+        <p className="text-subtle">
+          {t('comparison.participants', { names: detail.participants.map((p) => p.username).join(', ') })}
+        </p>
       </section>
 
       <section className="surface-card p-5">
-        <h3 className="page-title">Add variant</h3>
+        <h3 className="page-title">{t('comparison.addVariant')}</h3>
         <form onSubmit={onCreateVariant}>
           <div className="mb-4">
-            <label className="field-label">Variant title</label>
+            <label className="field-label">{t('comparison.variantTitle')}</label>
             <input
               className={`text-input ${createVariantFieldErrors.title ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
               value={title}
@@ -111,7 +129,7 @@ export function ComparisonDetailPage() {
             ) : null}
           </div>
           <div className="mb-4">
-            <label className="field-label">Description</label>
+            <label className="field-label">{t('comparison.description')}</label>
             <textarea
               className="text-input"
               rows={3}
@@ -128,20 +146,21 @@ export function ComparisonDetailPage() {
           </div>
           {createVariantError ? <div className="error-banner mb-4">{createVariantError}</div> : null}
           <button type="submit" className="primary-btn" disabled={creatingVariant}>
-            {creatingVariant ? 'Adding...' : 'Add variant'}
+            {creatingVariant ? t('comparison.adding') : t('comparison.add')}
           </button>
         </form>
       </section>
 
       <section className="surface-card p-5">
-        <h3 className="page-title">Variants</h3>
-        {detail.variants.length === 0 ? <p>No variants yet.</p> : null}
+        <h3 className="page-title">{t('comparison.variants')}</h3>
+        {detail.variants.length === 0 ? <p>{t('comparison.noVariants')}</p> : null}
         <div className="grid gap-3">
           {detail.variants.map((variant) => (
             <VariantCard
               key={variant.id}
               variant={variant}
               username={user?.username}
+              t={t}
               onRateVariant={onRateVariant}
             />
           ))}
@@ -154,10 +173,12 @@ export function ComparisonDetailPage() {
 function VariantCard({
   variant,
   username,
+  t,
   onRateVariant
 }: {
   variant: Variant;
   username?: string;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
   onRateVariant: (variantId: number, rank: number, pros: string, cons: string) => Promise<void>;
 }) {
   const [rank, setRank] = useState(variant.ratings.find((r) => r.username === username)?.rank ?? 5);
@@ -175,7 +196,7 @@ function VariantCard({
     try {
       await onRateVariant(variant.id, rank, pros, cons);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to save rating');
+      setError(err instanceof ApiError ? err.message : t('comparison.rateVariantError'));
       setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setSaving(false);
@@ -185,16 +206,25 @@ function VariantCard({
   return (
     <article className="rounded-xl border border-blue-100 bg-white/70 p-4 shadow-sm">
       <h4 className="mb-1 text-base font-semibold text-slate-900">{variant.title}</h4>
-      <p className="text-subtle mb-1">{variant.description || 'No description.'}</p>
+      <p className="text-subtle mb-1">{variant.description || t('comparison.noDescription')}</p>
       <p className="text-subtle mb-2">
-        Created by {variant.createdByName} · Avg rank {variant.averageRank.toFixed(2)} ({variant.ratingCount} ratings)
+        {t('comparison.meta', {
+          name: variant.createdByName,
+          avg: variant.averageRank.toFixed(2),
+          count: variant.ratingCount
+        })}
       </p>
-      <ExistingRating variant={variant} username={username} />
+      <ExistingRating
+        variant={variant}
+        username={username}
+        noRatingText={t('comparison.noRating')}
+        yourRatingText={(params) => t('comparison.yourRating', params)}
+      />
 
       <form onSubmit={submit}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
           <div className="md:col-span-3">
-            <label className="field-label">Rank (1..10)</label>
+            <label className="field-label">{t('comparison.rank')}</label>
             <input
               className={`text-input ${fieldErrors.rank ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
               type="number"
@@ -213,7 +243,7 @@ function VariantCard({
             {fieldErrors.rank ? <p className="mt-1 text-sm text-red-600">{fieldErrors.rank}</p> : null}
           </div>
           <div className="md:col-span-4">
-            <label className="field-label">Pros</label>
+            <label className="field-label">{t('comparison.pros')}</label>
             <input
               className={`text-input ${fieldErrors.pros ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
               value={pros}
@@ -229,7 +259,7 @@ function VariantCard({
             {fieldErrors.pros ? <p className="mt-1 text-sm text-red-600">{fieldErrors.pros}</p> : null}
           </div>
           <div className="md:col-span-4">
-            <label className="field-label">Cons</label>
+            <label className="field-label">{t('comparison.cons')}</label>
             <input
               className={`text-input ${fieldErrors.cons ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
               value={cons}
@@ -246,7 +276,7 @@ function VariantCard({
           </div>
           <div className="md:col-span-1 md:self-end">
             <button type="submit" className="ghost-btn w-full" disabled={saving}>
-              {saving ? '...' : 'Save'}
+              {saving ? '...' : t('comparison.save')}
             </button>
           </div>
         </div>
@@ -255,11 +285,16 @@ function VariantCard({
 
       {variant.ratings.length > 0 ? (
         <details className="mt-3 rounded-lg border border-slate-200 bg-white/80 p-3">
-          <summary className="cursor-pointer text-sm font-medium text-slate-700">All personal ratings</summary>
+          <summary className="cursor-pointer text-sm font-medium text-slate-700">{t('comparison.allRatings')}</summary>
           <ul className="mt-2 ml-4 list-disc space-y-1 text-sm">
             {variant.ratings.map((rating) => (
               <li key={`${rating.variantId}-${rating.userId}`}>
-                {rating.username}: {rating.rank} (pros: {rating.pros || '-'}, cons: {rating.cons || '-'})
+                {t('comparison.ratingItem', {
+                  name: rating.username,
+                  rank: rating.rank,
+                  pros: rating.pros || '-',
+                  cons: rating.cons || '-'
+                })}
               </li>
             ))}
           </ul>

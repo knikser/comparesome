@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"comparesome/backend/internal/i18n"
 	"comparesome/backend/internal/model"
 
 	"golang.org/x/crypto/bcrypt"
@@ -24,6 +25,14 @@ func NewStore(db *sql.DB) *Store {
 
 func normalizeUsername(v string) string {
 	return strings.ToLower(strings.TrimSpace(v))
+}
+
+func normalizeLanguage(v string) (string, bool) {
+	lang := i18n.NormalizeLanguage(v)
+	if lang != strings.ToLower(strings.TrimSpace(v)) {
+		return "", false
+	}
+	return lang, true
 }
 
 func round2(v float64) float64 {
@@ -46,10 +55,10 @@ func (s *Store) Authenticate(ctx context.Context, username, password string) (*m
 	var user model.User
 	var hash string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, username, password_hash, is_admin, must_change_password, created_at
+		SELECT id, username, password_hash, is_admin, must_change_password, language, created_at
 		FROM users
 		WHERE username = $1
-	`, username).Scan(&user.ID, &user.Username, &hash, &user.IsAdmin, &user.MustChangePassword, &user.CreatedAt)
+	`, username).Scan(&user.ID, &user.Username, &hash, &user.IsAdmin, &user.MustChangePassword, &user.Language, &user.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrUnauthorized
@@ -124,10 +133,10 @@ func (s *Store) CreateUser(ctx context.Context, username, password string, isAdm
 	}
 	var user model.User
 	err = s.db.QueryRowContext(ctx, `
-		INSERT INTO users(username, password_hash, is_admin, must_change_password)
-		VALUES ($1, $2, $3, TRUE)
-		RETURNING id, username, is_admin, must_change_password, created_at
-	`, username, string(hash), isAdmin).Scan(&user.ID, &user.Username, &user.IsAdmin, &user.MustChangePassword, &user.CreatedAt)
+		INSERT INTO users(username, password_hash, is_admin, must_change_password, language)
+		VALUES ($1, $2, $3, TRUE, 'ru')
+		RETURNING id, username, is_admin, must_change_password, language, created_at
+	`, username, string(hash), isAdmin).Scan(&user.ID, &user.Username, &user.IsAdmin, &user.MustChangePassword, &user.Language, &user.CreatedAt)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 			return nil, NewValidationError("A user with this username already exists.", map[string]string{
@@ -141,7 +150,7 @@ func (s *Store) CreateUser(ctx context.Context, username, password string, isAdm
 
 func (s *Store) ListUsers(ctx context.Context) ([]model.User, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, username, is_admin, must_change_password, created_at
+		SELECT id, username, is_admin, must_change_password, language, created_at
 		FROM users
 		ORDER BY username ASC
 	`)
@@ -153,7 +162,7 @@ func (s *Store) ListUsers(ctx context.Context) ([]model.User, error) {
 	users := make([]model.User, 0)
 	for rows.Next() {
 		var user model.User
-		if err := rows.Scan(&user.ID, &user.Username, &user.IsAdmin, &user.MustChangePassword, &user.CreatedAt); err != nil {
+		if err := rows.Scan(&user.ID, &user.Username, &user.IsAdmin, &user.MustChangePassword, &user.Language, &user.CreatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, user)
@@ -164,10 +173,10 @@ func (s *Store) ListUsers(ctx context.Context) ([]model.User, error) {
 func (s *Store) GetUserByID(ctx context.Context, userID int64) (*model.User, error) {
 	var user model.User
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, username, is_admin, must_change_password, created_at
+		SELECT id, username, is_admin, must_change_password, language, created_at
 		FROM users
 		WHERE id = $1
-	`, userID).Scan(&user.ID, &user.Username, &user.IsAdmin, &user.MustChangePassword, &user.CreatedAt)
+	`, userID).Scan(&user.ID, &user.Username, &user.IsAdmin, &user.MustChangePassword, &user.Language, &user.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
@@ -661,6 +670,25 @@ func (s *Store) getTopVariantsForComparison(ctx context.Context, comparisonID in
 func (s *Store) TouchLastLogin(ctx context.Context, userID int64) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE users SET created_at = created_at WHERE id = $1`, userID)
 	return err
+}
+
+func (s *Store) UpdateUserLanguage(ctx context.Context, userID int64, language string) (*model.User, error) {
+	lang, ok := normalizeLanguage(language)
+	if !ok {
+		return nil, fmt.Errorf("%w: unsupported language", ErrValidation)
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE users SET language = $1 WHERE id = $2`, lang, userID)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected == 0 {
+		return nil, ErrNotFound
+	}
+	return s.GetUserByID(ctx, userID)
 }
 
 func (s *Store) Now() time.Time {

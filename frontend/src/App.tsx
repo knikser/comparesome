@@ -7,6 +7,7 @@ import { ComparisonDetailPage } from './pages/ComparisonDetailPage';
 import { ComparisonsPage } from './pages/ComparisonsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/comparisons" element={<ComparisonsPage />} />
             <Route path="/comparisons/:id" element={<ComparisonDetailPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route element={<RequireAdmin />}>
             <Route path="/admin" element={<AdminPage />} />

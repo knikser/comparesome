@@ -7,6 +7,7 @@ import type {
   User,
   Variant
 } from '../types/api';
+import { getCurrentLanguage } from '../i18n';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -55,6 +56,21 @@ function parseErrorMessage(payload: unknown): string | null {
 }
 
 function defaultErrorMessage(status: number): string {
+  const lang = getCurrentLanguage();
+  if (lang === 'ru') {
+    switch (status) {
+      case 400:
+        return 'Проверьте введенные данные.';
+      case 401:
+        return 'Ошибка авторизации. Войдите снова.';
+      case 403:
+        return 'Недостаточно прав для выполнения действия.';
+      case 404:
+        return 'Запрошенные данные не найдены.';
+      default:
+        return 'Что-то пошло не так. Попробуйте еще раз.';
+    }
+  }
   switch (status) {
     case 400:
       return 'Please check the entered data.';
@@ -76,14 +92,22 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     headers.set('Authorization', `Bearer ${options.token}`);
   }
 
+  const url = new URL(`${API_URL}${path}`, window.location.origin);
+  url.searchParams.set('lang', getCurrentLanguage());
+
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, {
+    response = await fetch(url.toString(), {
       ...options,
       headers
     });
   } catch {
-    throw new ApiError('Cannot connect to server. Check your connection and try again.', 0);
+    throw new ApiError(
+      getCurrentLanguage() === 'ru'
+        ? 'Не удалось подключиться к серверу. Проверьте соединение и повторите попытку.'
+        : 'Cannot connect to server. Check your connection and try again.',
+      0
+    );
   }
 
   const body = await response.json().catch(() => ({}));
@@ -103,6 +127,15 @@ export const api = {
     }),
 
   me: (token: string) => request<{ user: User }>('/me', { token }),
+
+  meSettings: (token: string) => request<{ language: 'ru' | 'en' }>('/me/settings', { token }),
+
+  updateMeSettings: (token: string, language: 'ru' | 'en') =>
+    request<{ user: User }>('/me/settings', {
+      token,
+      method: 'PUT',
+      body: JSON.stringify({ language })
+    }),
 
   changePassword: (token: string, oldPassword: string, newPassword: string) =>
     request<{ token: string; user: User }>('/auth/change-password', {

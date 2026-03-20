@@ -12,11 +12,11 @@ func RequireFeature(flagKey string, checker FlagChecker) func(http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			enabled, err := checker(r.Context(), flagKey)
 			if err != nil {
-				writeError(w, http.StatusInternalServerError, "feature flag check failed")
+				writeLocalizedError(w, r, http.StatusInternalServerError, "error.feature_flag_check_failed")
 				return
 			}
 			if !enabled {
-				writeError(w, http.StatusForbidden, "feature disabled: "+flagKey)
+				writeLocalizedError(w, r, http.StatusForbidden, "error.feature_disabled", flagKey)
 				return
 			}
 			next.ServeHTTP(w, r)
