@@ -29,9 +29,12 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 			password_hash TEXT NOT NULL,
 			is_admin BOOLEAN NOT NULL DEFAULT FALSE,
 			must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+			language TEXT NOT NULL DEFAULT 'ru',
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 		`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'ru';`,
+		`UPDATE users SET language = 'ru' WHERE language IS NULL OR language NOT IN ('ru', 'en');`,
 		`
 		CREATE TABLE IF NOT EXISTS feature_flags (
 			key TEXT PRIMARY KEY,
@@ -98,8 +101,8 @@ func Migrate(ctx context.Context, conn *sql.DB) error {
 		return err
 	}
 	if _, err := conn.ExecContext(ctx, `
-		INSERT INTO users(username, password_hash, is_admin, must_change_password)
-		VALUES ('admin', $1, TRUE, TRUE)
+		INSERT INTO users(username, password_hash, is_admin, must_change_password, language)
+		VALUES ('admin', $1, TRUE, TRUE, 'ru')
 		ON CONFLICT (username) DO NOTHING;
 	`, string(adminHash)); err != nil {
 		return err

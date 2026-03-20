@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+    language TEXT NOT NULL DEFAULT 'ru',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
