@@ -57,6 +57,12 @@ pnpm install
 pnpm --filter frontend dev
 ```
 
+Frontend API base URL:
+
+- Default: `/api` (same host as frontend, recommended for deployed environment)
+- Local dev: Vite proxies `/api` to `http://localhost:8080`
+- Optional override at build time: `VITE_API_URL=https://your-api-host/api`
+
 ### Backend
 
 ```bash
