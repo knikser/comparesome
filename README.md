@@ -44,7 +44,7 @@ docker compose up --build
 
 Services:
 
-- Frontend: `http://localhost:5173`
+- Frontend: `http://localhost:5443`
 - Backend API: `http://localhost:8080`
 - Postgres: `localhost:5432` (db: `comparesome`)
 
