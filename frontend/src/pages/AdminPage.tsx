@@ -14,6 +14,8 @@ export function AdminPage() {
   const [password, setPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState('');
+  const [createUserFieldErrors, setCreateUserFieldErrors] = useState<Record<string, string>>({});
+  const [settingsFieldErrors, setSettingsFieldErrors] = useState<Record<string, string>>({});
 
   const load = async () => {
     if (!token) {
@@ -42,6 +44,7 @@ export function AdminPage() {
     if (!token) {
       return;
     }
+    setCreateUserFieldErrors({});
     try {
       await api.adminCreateUser(token, username, password, isAdmin);
       setUsername('');
@@ -50,6 +53,7 @@ export function AdminPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('admin.createUserError'));
+      setCreateUserFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     }
   };
 
@@ -70,138 +74,166 @@ export function AdminPage() {
     if (!token || !settings) {
       return;
     }
+    setSettingsFieldErrors({});
     try {
       const next = await api.adminUpdateSettings(token, settings.maxVariantsPerUser);
       setSettings(next);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('admin.updateSettingsError'));
+      setSettingsFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     }
   };
 
   return (
-    <div className="d-grid gap-4">
-      {error ? <div className="alert alert-danger mb-0">{error}</div> : null}
-      <section className="card section-card">
-        <div className="card-body">
-          <h2 className="h5 page-title">{t('admin.createUser')}</h2>
-          <form onSubmit={onCreateUser}>
-            <div className="row g-3">
-              <div className="col-12 col-md-5">
-                <label className="form-label">{t('admin.username')}</label>
+    <div className="grid gap-4">
+      {error ? <div className="error-banner">{error}</div> : null}
+      <section className="surface-card p-5">
+        <h2 className="page-title">{t('admin.createUser')}</h2>
+        <form onSubmit={onCreateUser}>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+            <div className="md:col-span-5">
+              <label className="field-label">{t('admin.username')}</label>
+              <input
+                className={`text-input ${createUserFieldErrors.username ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setCreateUserFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.username;
+                    return next;
+                  });
+                }}
+                required
+              />
+              {createUserFieldErrors.username ? (
+                <p className="mt-1 text-sm text-red-600">{createUserFieldErrors.username}</p>
+              ) : null}
+            </div>
+            <div className="md:col-span-5">
+              <label className="field-label">{t('admin.password')}</label>
+              <input
+                className={`text-input ${createUserFieldErrors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setCreateUserFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.password;
+                    return next;
+                  });
+                }}
+                required
+              />
+              {createUserFieldErrors.password ? (
+                <p className="mt-1 text-sm text-red-600">{createUserFieldErrors.password}</p>
+              ) : null}
+            </div>
+            <div className="md:col-span-2 md:self-end">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-sm text-slate-700">
                 <input
-                  className="form-control"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
+                  id="admin-user-switch"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-200"
+                  checked={isAdmin}
+                  onChange={(e) => setIsAdmin(e.target.checked)}
                 />
+                <span>{t('admin.admin')}</span>
+              </label>
+            </div>
+            <div className="md:col-span-12">
+              <button type="submit" className="primary-btn">
+                {t('admin.create')}
+              </button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <section className="surface-card p-5">
+        <h2 className="page-title">{t('admin.users')}</h2>
+        <ul className="divide-y divide-slate-100">
+          {users.map((item) => (
+            <li key={item.id} className="flex items-center justify-between gap-2 py-3">
+              <span>{item.username}</span>
+              <div className="flex flex-wrap gap-1">
+                {item.isAdmin ? (
+                  <span className="chip border-blue-200 bg-blue-50 text-blue-700">{t('admin.badgeAdmin')}</span>
+                ) : null}
+                {item.mustChangePassword ? (
+                  <span className="chip border-amber-200 bg-amber-50 text-amber-700">
+                    {t('admin.badgeMustChangePassword')}
+                  </span>
+                ) : null}
               </div>
-              <div className="col-12 col-md-5">
-                <label className="form-label">{t('admin.password')}</label>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="surface-card p-5">
+        <h2 className="page-title">{t('admin.featureFlags')}</h2>
+        <ul className="divide-y divide-slate-100">
+          {flags.map((flag) => (
+            <li key={flag.key} className="flex items-center justify-between gap-3 py-3">
+              <span>{flag.key}</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`chip ${
+                    flag.enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'text-slate-500'
+                  }`}
+                >
+                  {flag.enabled ? t('admin.enabled') : t('admin.disabled')}
+                </span>
+                <button onClick={() => onToggleFlag(flag)} type="button" className="secondary-btn px-3 py-1.5">
+                  {t('admin.toggle')}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="surface-card p-5">
+        <h2 className="page-title">{t('admin.settings')}</h2>
+        {settings ? (
+          <form onSubmit={onUpdateSettings}>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-end">
+              <div className="md:col-span-5">
+                <label className="field-label">{t('admin.maxVariants')}</label>
                 <input
-                  className="form-control"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  className={`text-input ${settingsFieldErrors.maxVariantsPerUser ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={settings.maxVariantsPerUser}
+                  onChange={(e) => {
+                    setSettings({
+                      ...settings,
+                      maxVariantsPerUser: Number(e.target.value)
+                    });
+                    setSettingsFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.maxVariantsPerUser;
+                      return next;
+                    });
+                  }}
                 />
+                {settingsFieldErrors.maxVariantsPerUser ? (
+                  <p className="mt-1 text-sm text-red-600">{settingsFieldErrors.maxVariantsPerUser}</p>
+                ) : null}
               </div>
-              <div className="col-12 col-md-2 d-flex align-items-end">
-                <div className="form-check form-switch mb-2">
-                  <input
-                    className="form-check-input"
-                    id="admin-user-switch"
-                    type="checkbox"
-                    checked={isAdmin}
-                    onChange={(e) => setIsAdmin(e.target.checked)}
-                  />
-                  <label className="form-check-label" htmlFor="admin-user-switch">
-                    {t('admin.admin')}
-                  </label>
-                </div>
-              </div>
-              <div className="col-12">
-                <button type="submit" className="btn btn-primary">
-                  {t('admin.create')}
+              <div className="md:col-span-2">
+                <button type="submit" className="primary-btn">
+                  {t('admin.saveSettings')}
                 </button>
               </div>
             </div>
           </form>
-        </div>
-      </section>
-
-      <section className="card section-card">
-        <div className="card-body">
-          <h2 className="h5 page-title">{t('admin.users')}</h2>
-          <ul className="list-group list-group-flush">
-            {users.map((item) => (
-              <li key={item.id} className="list-group-item px-0 d-flex justify-content-between gap-2">
-                <span>{item.username}</span>
-                <div className="d-flex flex-wrap gap-1">
-                  {item.isAdmin ? <span className="badge text-bg-primary">{t('admin.badgeAdmin')}</span> : null}
-                  {item.mustChangePassword ? (
-                    <span className="badge text-bg-warning">{t('admin.badgeMustChangePassword')}</span>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="card section-card">
-        <div className="card-body">
-          <h2 className="h5 page-title">{t('admin.featureFlags')}</h2>
-          <ul className="list-group list-group-flush">
-            {flags.map((flag) => (
-              <li key={flag.key} className="list-group-item px-0 d-flex justify-content-between align-items-center">
-                <span>{flag.key}</span>
-                <div className="d-flex align-items-center gap-2">
-                  <span className={`badge ${flag.enabled ? 'text-bg-success' : 'text-bg-secondary'}`}>
-                    {flag.enabled ? t('admin.enabled') : t('admin.disabled')}
-                  </span>
-                  <button onClick={() => onToggleFlag(flag)} type="button" className="btn btn-sm btn-outline-secondary">
-                    {t('admin.toggle')}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="card section-card">
-        <div className="card-body">
-          <h2 className="h5 page-title">{t('admin.settings')}</h2>
-          {settings ? (
-            <form onSubmit={onUpdateSettings}>
-              <div className="row g-3 align-items-end">
-                <div className="col-12 col-md-5">
-                  <label className="form-label">{t('admin.maxVariants')}</label>
-                  <input
-                    className="form-control"
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={settings.maxVariantsPerUser}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        maxVariantsPerUser: Number(e.target.value)
-                      })
-                    }
-                  />
-                </div>
-                <div className="col-12 col-md-auto">
-                  <button type="submit" className="btn btn-primary">
-                    {t('admin.saveSettings')}
-                  </button>
-                </div>
-              </div>
-            </form>
-          ) : (
-            <p className="mb-0">{t('admin.loadingSettings')}</p>
-          )}
-        </div>
+        ) : (
+          <p>{t('admin.loadingSettings')}</p>
+        )}
       </section>
     </div>
   );

@@ -11,12 +11,14 @@ export function LoginPage() {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
     try {
       const response = await api.login(username, password);
       auth.login(response.token, response.user);
@@ -24,37 +26,54 @@ export function LoginPage() {
     } catch (err) {
       const message = err instanceof ApiError ? err.message : t('login.error');
       setError(message);
+      setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-screen">
-      <form className="card section-card auth-card p-4" onSubmit={onSubmit}>
-        <h2 className="h4 mb-1">{t('login.title')}</h2>
-        <p className="subtle-text mb-4">{t('login.hint')}</p>
-        <div className="mb-3">
-          <label className="form-label">{t('login.username')}</label>
+    <div className="flex min-h-screen items-center justify-center p-5">
+      <form className="surface-card w-full max-w-md p-6 sm:p-7" onSubmit={onSubmit}>
+        <h2 className="mb-1 text-2xl font-semibold text-slate-900">{t('login.title')}</h2>
+        <p className="text-subtle mb-5">{t('login.hint')}</p>
+        <div className="mb-4">
+          <label className="field-label">{t('login.username')}</label>
           <input
-            className="form-control"
+            className={`text-input ${fieldErrors.username ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.username;
+                return next;
+              });
+            }}
             autoComplete="username"
           />
+          {fieldErrors.username ? <p className="mt-1 text-sm text-red-600">{fieldErrors.username}</p> : null}
         </div>
-        <div className="mb-3">
-          <label className="form-label">{t('login.password')}</label>
+        <div className="mb-4">
+          <label className="field-label">{t('login.password')}</label>
           <input
-            className="form-control"
+            className={`text-input ${fieldErrors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.password;
+                return next;
+              });
+            }}
             autoComplete="current-password"
           />
+          {fieldErrors.password ? <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p> : null}
         </div>
-        {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-        <button disabled={loading} type="submit" className="btn btn-primary w-100 mt-2">
+        {error ? <div className="error-banner">{error}</div> : null}
+        <button disabled={loading} type="submit" className="primary-btn mt-4 w-full">
           {loading ? t('login.submitting') : t('login.submit')}
         </button>
       </form>

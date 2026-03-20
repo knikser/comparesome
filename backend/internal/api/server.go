@@ -120,6 +120,22 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+type errorResponse struct {
+	Error       string            `json:"error"`
+	FieldErrors map[string]string `json:"fieldErrors,omitempty"`
+}
+
+func writeAPIError(w http.ResponseWriter, status int, message string, fieldErrors map[string]string) {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		message = "Request failed."
+	}
+	writeJSON(w, status, errorResponse{
+		Error:       message,
+		FieldErrors: fieldErrors,
+	})
+}
+
 func decodeJSON(r *http.Request, target any) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
@@ -130,17 +146,22 @@ func handleServiceError(w http.ResponseWriter, r *http.Request, err error) {
 	case err == nil:
 		return
 	case errors.Is(err, service.ErrUnauthorized):
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": i18n.Message(lang, "error.unauthorized")})
+		writeAPIError(w, http.StatusUnauthorized, i18n.Message(lang, "error.unauthorized"), nil)
 	case errors.Is(err, service.ErrForbidden):
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": i18n.Message(lang, "error.forbidden")})
+		writeAPIError(w, http.StatusForbidden, i18n.Message(lang, "error.forbidden"), nil)
 	case errors.Is(err, service.ErrNotFound):
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": i18n.Message(lang, "error.not_found")})
+		writeAPIError(w, http.StatusNotFound, i18n.Message(lang, "error.not_found"), nil)
 	case errors.Is(err, service.ErrLimitExceeded):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.limit_exceeded")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.limit_exceeded"), nil)
 	case errors.Is(err, service.ErrValidation):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.validation")})
+		message := i18n.Message(lang, "error.validation")
+		_, fieldErrors, ok := service.GetValidationDetails(err)
+		if !ok {
+			fieldErrors = nil
+		}
+		writeAPIError(w, http.StatusBadRequest, message, fieldErrors)
 	default:
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": i18n.Message(lang, "error.internal")})
+		writeAPIError(w, http.StatusInternalServerError, i18n.Message(lang, "error.internal"), nil)
 	}
 }
 
@@ -153,7 +174,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.LanguageFromRequest(r)
 	var req loginRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	user, err := s.store.Authenticate(r.Context(), req.Username, req.Password)
@@ -174,7 +195,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.LanguageFromRequest(r)
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": i18n.Message(lang, "error.missing_claims")})
+		writeAPIError(w, http.StatusUnauthorized, i18n.Message(lang, "error.missing_claims"), nil)
 		return
 	}
 	user, err := s.store.GetUserByID(r.Context(), claims.UserID)
@@ -189,7 +210,7 @@ func (s *Server) meSettings(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.LanguageFromRequest(r)
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": i18n.Message(lang, "error.missing_claims")})
+		writeAPIError(w, http.StatusUnauthorized, i18n.Message(lang, "error.missing_claims"), nil)
 		return
 	}
 	user, err := s.store.GetUserByID(r.Context(), claims.UserID)
@@ -208,18 +229,18 @@ func (s *Server) updateMeSettings(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.LanguageFromRequest(r)
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": i18n.Message(lang, "error.missing_claims")})
+		writeAPIError(w, http.StatusUnauthorized, i18n.Message(lang, "error.missing_claims"), nil)
 		return
 	}
 	var req updateMeSettingsRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	user, err := s.store.UpdateUserLanguage(r.Context(), claims.UserID, req.Language)
 	if err != nil {
 		if errors.Is(err, service.ErrValidation) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_language")})
+			writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_language"), nil)
 			return
 		}
 		handleServiceError(w, r, err)
@@ -237,12 +258,12 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.LanguageFromRequest(r)
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": i18n.Message(lang, "error.missing_claims")})
+		writeAPIError(w, http.StatusUnauthorized, i18n.Message(lang, "error.missing_claims"), nil)
 		return
 	}
 	var req changePasswordRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	if err := s.store.ChangePassword(r.Context(), claims.UserID, req.OldPassword, req.NewPassword); err != nil {
@@ -291,7 +312,7 @@ func (s *Server) createComparison(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	var req createComparisonRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	cmp, err := s.store.CreateComparison(r.Context(), claims.UserID, req.Name, req.ParticipantIDs)
@@ -321,7 +342,7 @@ func (s *Server) getComparison(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	id, err := parseIDParam(r, "comparisonID")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_comparison_id")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_comparison_id"), nil)
 		return
 	}
 	cmp, err := s.store.GetComparison(r.Context(), id, claims.UserID, claims.IsAdmin)
@@ -342,12 +363,12 @@ func (s *Server) createVariant(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	comparisonID, err := parseIDParam(r, "comparisonID")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_comparison_id")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_comparison_id"), nil)
 		return
 	}
 	var req createVariantRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	variant, err := s.store.CreateVariant(r.Context(), comparisonID, claims.UserID, claims.IsAdmin, req.Title, req.Description)
@@ -369,12 +390,12 @@ func (s *Server) rateVariant(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	variantID, err := parseIDParam(r, "variantID")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_variant_id")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_variant_id"), nil)
 		return
 	}
 	var req rateVariantRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	err = s.store.RateVariant(r.Context(), variantID, claims.UserID, claims.IsAdmin, req.Pros, req.Cons, req.Rank)
@@ -399,7 +420,7 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.LanguageFromRequest(r)
 	var req adminCreateUserRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	user, err := s.store.CreateUser(r.Context(), req.Username, req.Password, req.IsAdmin)
@@ -428,7 +449,7 @@ func (s *Server) adminUpdateFeatureFlag(w http.ResponseWriter, r *http.Request) 
 	key := strings.TrimSpace(chi.URLParam(r, "key"))
 	var req updateFeatureFlagRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	if err := s.store.SetFeatureFlag(r.Context(), key, req.Enabled); err != nil {
@@ -455,7 +476,7 @@ func (s *Server) adminUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.LanguageFromRequest(r)
 	var req updateSettingsRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": i18n.Message(lang, "error.invalid_payload")})
+		writeAPIError(w, http.StatusBadRequest, i18n.Message(lang, "error.invalid_payload"), nil)
 		return
 	}
 	settings, err := s.store.UpdateSettings(r.Context(), req.MaxVariantsPerUser)

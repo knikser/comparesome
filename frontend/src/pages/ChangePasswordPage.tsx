@@ -11,6 +11,7 @@ export function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState('admin');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   if (!token || !user) {
@@ -25,6 +26,7 @@ export function ChangePasswordPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
     try {
       const response = await api.changePassword(token, oldPassword, newPassword);
       login(response.token, response.user);
@@ -32,38 +34,55 @@ export function ChangePasswordPage() {
     } catch (err) {
       const message = err instanceof ApiError ? err.message : t('changePassword.error');
       setError(message);
+      setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-screen">
-      <form className="card section-card auth-card p-4" onSubmit={onSubmit}>
-        <h2 className="h4 mb-1">{t('changePassword.title')}</h2>
-        <p className="subtle-text mb-4">{t('changePassword.hint')}</p>
-        <div className="mb-3">
-          <label className="form-label">{t('changePassword.current')}</label>
+    <div className="flex min-h-screen items-center justify-center p-5">
+      <form className="surface-card w-full max-w-md p-6 sm:p-7" onSubmit={onSubmit}>
+        <h2 className="mb-1 text-2xl font-semibold text-slate-900">{t('changePassword.title')}</h2>
+        <p className="text-subtle mb-5">{t('changePassword.hint')}</p>
+        <div className="mb-4">
+          <label className="field-label">{t('changePassword.current')}</label>
           <input
-            className="form-control"
+            className={`text-input ${fieldErrors.oldPassword ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             type="password"
             value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
+            onChange={(e) => {
+              setOldPassword(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.oldPassword;
+                return next;
+              });
+            }}
             autoComplete="current-password"
           />
+          {fieldErrors.oldPassword ? <p className="mt-1 text-sm text-red-600">{fieldErrors.oldPassword}</p> : null}
         </div>
-        <div className="mb-3">
-          <label className="form-label">{t('changePassword.new')}</label>
+        <div className="mb-4">
+          <label className="field-label">{t('changePassword.new')}</label>
           <input
-            className="form-control"
+            className={`text-input ${fieldErrors.newPassword ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.newPassword;
+                return next;
+              });
+            }}
             autoComplete="new-password"
           />
+          {fieldErrors.newPassword ? <p className="mt-1 text-sm text-red-600">{fieldErrors.newPassword}</p> : null}
         </div>
-        {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-        <button disabled={loading} type="submit" className="btn btn-primary w-100 mt-2">
+        {error ? <div className="error-banner">{error}</div> : null}
+        <button disabled={loading} type="submit" className="primary-btn mt-4 w-full">
           {loading ? t('changePassword.submitting') : t('changePassword.submit')}
         </button>
       </form>

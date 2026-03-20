@@ -24,34 +24,38 @@ export function DashboardPage() {
   }, [token, t]);
 
   if (error) {
-    return <div className="alert alert-danger">{error}</div>;
+    return <div className="error-banner">{error}</div>;
   }
   if (!data) {
-    return <div className="alert alert-light border">{t('dashboard.loading')}</div>;
+    return <div className="loading-banner">{t('dashboard.loading')}</div>;
   }
 
   return (
-    <div className="row g-4">
-      <section className="col-12 col-xl-7">
-        <div className="card section-card h-100">
-          <div className="card-body">
-            <h2 className="h5 page-title">{t('dashboard.lastComparisons')}</h2>
-            <p className="subtle-text">{t('dashboard.lastComparisonsHint')}</p>
-            {data.lastComparisons.length === 0 ? <p className="mb-0">{t('dashboard.noComparisons')}</p> : null}
-            <div className="d-grid gap-3">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+      <section className="xl:col-span-7">
+        <div className="surface-card h-full p-5">
+          <h2 className="page-title">{t('dashboard.lastComparisons')}</h2>
+          <p className="text-subtle mb-4">{t('dashboard.lastComparisonsHint')}</p>
+          {data.lastComparisons.length === 0 ? <p>{t('dashboard.noComparisons')}</p> : null}
+          <div className="grid gap-3">
               {data.lastComparisons.map((item) => (
-                <article key={item.comparison.id} className="variant-card p-3">
-                  <h3 className="h6 mb-2">
-                    <Link to={`/comparisons/${item.comparison.id}`}>{item.comparison.name}</Link>
+                <article
+                  key={item.comparison.id}
+                  className="rounded-xl border border-blue-100 bg-white/70 p-4 shadow-sm"
+                >
+                  <h3 className="mb-2 text-base font-semibold text-slate-900">
+                    <Link className="link" to={`/comparisons/${item.comparison.id}`}>
+                      {item.comparison.name}
+                    </Link>
                   </h3>
-                  <p className="mb-2 subtle-text">
+                  <p className="text-subtle mb-2">
                     {t('dashboard.createdBy', {
                       name: item.comparison.createdByName,
                       count: item.comparison.variantsCount
                     })}
                   </p>
-                  <h4 className="h6 mb-2">{t('dashboard.topRanked')}</h4>
-                  <ol className="mb-0">
+                  <h4 className="mb-2 text-sm font-semibold text-slate-900">{t('dashboard.topRanked')}</h4>
+                  <ol className="ml-4 list-decimal space-y-1 text-sm">
                     {item.topVariants.map((variant) => (
                       <li key={variant.variantId}>
                         {t('dashboard.variantItem', {
@@ -64,17 +68,15 @@ export function DashboardPage() {
                   </ol>
                 </article>
               ))}
-            </div>
           </div>
         </div>
       </section>
 
-      <section className="col-12 col-xl-5">
-        <div className="card section-card h-100">
-          <div className="card-body">
-            <h2 className="h5 page-title">{t('dashboard.topRated')}</h2>
-            <p className="subtle-text">{t('dashboard.topRatedHint')}</p>
-            <ol className="mb-0 d-grid gap-2">
+      <section className="xl:col-span-5">
+        <div className="surface-card h-full p-5">
+          <h2 className="page-title">{t('dashboard.topRated')}</h2>
+          <p className="text-subtle mb-4">{t('dashboard.topRatedHint')}</p>
+          <ol className="ml-4 list-decimal space-y-2 text-sm">
               {data.topRatedVariants.map((variant) => (
                 <li key={variant.variantId}>
                   {t('dashboard.topRatedItem', {
@@ -84,8 +86,7 @@ export function DashboardPage() {
                   })}
                 </li>
               ))}
-            </ol>
-          </div>
+          </ol>
         </div>
       </section>
     </div>

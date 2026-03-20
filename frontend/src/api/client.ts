@@ -11,16 +11,79 @@ import { getCurrentLanguage } from '../i18n';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
+type FieldErrors = Record<string, string>;
+
 export class ApiError extends Error {
   status: number;
+  fieldErrors: FieldErrors;
 
-  constructor(message: string, status = 500) {
+  constructor(message: string, status = 500, fieldErrors: FieldErrors = {}) {
     super(message);
     this.status = status;
+    this.fieldErrors = fieldErrors;
   }
 }
 
 type RequestOptions = RequestInit & { token?: string };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseFieldErrors(payload: unknown): FieldErrors {
+  if (!isRecord(payload) || !isRecord(payload.fieldErrors)) {
+    return {};
+  }
+  const out: FieldErrors = {};
+  for (const [key, value] of Object.entries(payload.fieldErrors)) {
+    if (typeof value === 'string' && value.trim() !== '') {
+      out[key] = value.trim();
+    }
+  }
+  return out;
+}
+
+function parseErrorMessage(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+  const value = payload.error ?? payload.message;
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+function defaultErrorMessage(status: number): string {
+  const lang = getCurrentLanguage();
+  if (lang === 'ru') {
+    switch (status) {
+      case 400:
+        return 'Проверьте введенные данные.';
+      case 401:
+        return 'Ошибка авторизации. Войдите снова.';
+      case 403:
+        return 'Недостаточно прав для выполнения действия.';
+      case 404:
+        return 'Запрошенные данные не найдены.';
+      default:
+        return 'Что-то пошло не так. Попробуйте еще раз.';
+    }
+  }
+  switch (status) {
+    case 400:
+      return 'Please check the entered data.';
+    case 401:
+      return 'Authentication failed. Please sign in again.';
+    case 403:
+      return 'You do not have access to perform this action.';
+    case 404:
+      return 'Requested data was not found.';
+    default:
+      return 'Something went wrong. Please try again.';
+  }
+}
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers);
@@ -32,14 +95,25 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const url = new URL(`${API_URL}${path}`, window.location.origin);
   url.searchParams.set('lang', getCurrentLanguage());
 
-  const response = await fetch(url.toString(), {
-    ...options,
-    headers
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      ...options,
+      headers
+    });
+  } catch {
+    throw new ApiError(
+      getCurrentLanguage() === 'ru'
+        ? 'Не удалось подключиться к серверу. Проверьте соединение и повторите попытку.'
+        : 'Cannot connect to server. Check your connection and try again.',
+      0
+    );
+  }
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new ApiError(body.error ?? 'Request failed', response.status);
+    const message = parseErrorMessage(body) ?? defaultErrorMessage(response.status);
+    throw new ApiError(message, response.status, parseFieldErrors(body));
   }
 
   return body as T;

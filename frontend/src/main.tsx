@@ -4,7 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './i18n';
-import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles.css';
 
 const routerBase = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '') || '/';
