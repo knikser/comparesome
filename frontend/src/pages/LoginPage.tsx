@@ -29,19 +29,30 @@ export function LoginPage() {
 
   return (
     <div className="auth-screen">
-      <form className="card" onSubmit={onSubmit}>
-        <h2>Sign in</h2>
-        <p>Default admin credentials: admin / admin</p>
-        <label>
-          Username
-          <input value={username} onChange={(e) => setUsername(e.target.value)} />
-        </label>
-        <label>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
-        {error ? <p className="error">{error}</p> : null}
-        <button disabled={loading} type="submit">
+      <form className="card section-card auth-card p-4" onSubmit={onSubmit}>
+        <h2 className="h4 mb-1">Welcome back</h2>
+        <p className="subtle-text mb-4">Default admin credentials: admin / admin</p>
+        <div className="mb-3">
+          <label className="form-label">Username</label>
+          <input
+            className="form-control"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Password</label>
+          <input
+            className="form-control"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+        </div>
+        {error ? <div className="alert alert-danger py-2">{error}</div> : null}
+        <button disabled={loading} type="submit" className="btn btn-primary w-100 mt-2">
           {loading ? 'Signing in...' : 'Login'}
         </button>
       </form>
