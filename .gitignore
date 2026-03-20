@@ -5,9 +5,13 @@ frontend/dist
 
 # go
 backend/bin
+backend/server
 
 # env / editor
 .env
 .DS_Store
 .vscode
 .idea
+
+# TypeScript build cache
+*.tsbuildinfo
