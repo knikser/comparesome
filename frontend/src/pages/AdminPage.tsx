@@ -12,6 +12,8 @@ export function AdminPage() {
   const [password, setPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState('');
+  const [createUserFieldErrors, setCreateUserFieldErrors] = useState<Record<string, string>>({});
+  const [settingsFieldErrors, setSettingsFieldErrors] = useState<Record<string, string>>({});
 
   const load = async () => {
     if (!token) {
@@ -40,6 +42,7 @@ export function AdminPage() {
     if (!token) {
       return;
     }
+    setCreateUserFieldErrors({});
     try {
       await api.adminCreateUser(token, username, password, isAdmin);
       setUsername('');
@@ -48,6 +51,7 @@ export function AdminPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create user');
+      setCreateUserFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     }
   };
 
@@ -68,11 +72,13 @@ export function AdminPage() {
     if (!token || !settings) {
       return;
     }
+    setSettingsFieldErrors({});
     try {
       const next = await api.adminUpdateSettings(token, settings.maxVariantsPerUser);
       setSettings(next);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to update settings');
+      setSettingsFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     }
   };
 
@@ -87,21 +93,41 @@ export function AdminPage() {
               <div className="col-12 col-md-5">
                 <label className="form-label">Username</label>
                 <input
-                  className="form-control"
+                  className={`form-control ${createUserFieldErrors.username ? 'is-invalid' : ''}`}
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setCreateUserFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.username;
+                      return next;
+                    });
+                  }}
                   required
                 />
+                {createUserFieldErrors.username ? (
+                  <div className="invalid-feedback">{createUserFieldErrors.username}</div>
+                ) : null}
               </div>
               <div className="col-12 col-md-5">
                 <label className="form-label">Password</label>
                 <input
-                  className="form-control"
+                  className={`form-control ${createUserFieldErrors.password ? 'is-invalid' : ''}`}
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setCreateUserFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.password;
+                      return next;
+                    });
+                  }}
                   required
                 />
+                {createUserFieldErrors.password ? (
+                  <div className="invalid-feedback">{createUserFieldErrors.password}</div>
+                ) : null}
               </div>
               <div className="col-12 col-md-2 d-flex align-items-end">
                 <div className="form-check form-switch mb-2">
@@ -174,18 +200,28 @@ export function AdminPage() {
                 <div className="col-12 col-md-5">
                   <label className="form-label">Max variants per user per comparison</label>
                   <input
-                    className="form-control"
+                    className={`form-control ${settingsFieldErrors.maxVariantsPerUser ? 'is-invalid' : ''}`}
                     type="number"
                     min={1}
                     max={50}
                     value={settings.maxVariantsPerUser}
                     onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        maxVariantsPerUser: Number(e.target.value)
-                      })
+                      {
+                        setSettings({
+                          ...settings,
+                          maxVariantsPerUser: Number(e.target.value)
+                        });
+                        setSettingsFieldErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.maxVariantsPerUser;
+                          return next;
+                        });
+                      }
                     }
                   />
+                  {settingsFieldErrors.maxVariantsPerUser ? (
+                    <div className="invalid-feedback">{settingsFieldErrors.maxVariantsPerUser}</div>
+                  ) : null}
                 </div>
                 <div className="col-12 col-md-auto">
                   <button type="submit" className="btn btn-primary">

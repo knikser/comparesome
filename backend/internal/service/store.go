@@ -33,7 +33,14 @@ func round2(v float64) float64 {
 func (s *Store) Authenticate(ctx context.Context, username, password string) (*model.User, error) {
 	username = normalizeUsername(username)
 	if username == "" || password == "" {
-		return nil, ErrValidation
+		fieldErrors := map[string]string{}
+		if username == "" {
+			fieldErrors["username"] = "Username is required."
+		}
+		if password == "" {
+			fieldErrors["password"] = "Password is required."
+		}
+		return nil, NewValidationError("Please fill in required fields.", fieldErrors)
 	}
 
 	var user model.User
@@ -56,8 +63,15 @@ func (s *Store) Authenticate(ctx context.Context, username, password string) (*m
 }
 
 func (s *Store) ChangePassword(ctx context.Context, userID int64, oldPassword, newPassword string) error {
+	if strings.TrimSpace(oldPassword) == "" {
+		return NewValidationError("Please fill in required fields.", map[string]string{
+			"oldPassword": "Current password is required.",
+		})
+	}
 	if len(newPassword) < 6 {
-		return fmt.Errorf("%w: password must be at least 6 chars", ErrValidation)
+		return NewValidationError("Please check the password requirements.", map[string]string{
+			"newPassword": "New password must be at least 6 characters.",
+		})
 	}
 
 	var currentHash string
@@ -69,7 +83,9 @@ func (s *Store) ChangePassword(ctx context.Context, userID int64, oldPassword, n
 		return err
 	}
 	if bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(oldPassword)) != nil {
-		return ErrUnauthorized
+		return NewValidationError("Current password is incorrect.", map[string]string{
+			"oldPassword": "Current password is incorrect.",
+		})
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
@@ -87,10 +103,19 @@ func (s *Store) ChangePassword(ctx context.Context, userID int64, oldPassword, n
 func (s *Store) CreateUser(ctx context.Context, username, password string, isAdmin bool) (*model.User, error) {
 	username = normalizeUsername(username)
 	if username == "" || password == "" {
-		return nil, ErrValidation
+		fieldErrors := map[string]string{}
+		if username == "" {
+			fieldErrors["username"] = "Username is required."
+		}
+		if password == "" {
+			fieldErrors["password"] = "Password is required."
+		}
+		return nil, NewValidationError("Please fill in required fields.", fieldErrors)
 	}
 	if len(password) < 6 {
-		return nil, fmt.Errorf("%w: password must be at least 6 chars", ErrValidation)
+		return nil, NewValidationError("Please check the password requirements.", map[string]string{
+			"password": "Password must be at least 6 characters.",
+		})
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -105,7 +130,9 @@ func (s *Store) CreateUser(ctx context.Context, username, password string, isAdm
 	`, username, string(hash), isAdmin).Scan(&user.ID, &user.Username, &user.IsAdmin, &user.MustChangePassword, &user.CreatedAt)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
-			return nil, fmt.Errorf("%w: username already exists", ErrValidation)
+			return nil, NewValidationError("A user with this username already exists.", map[string]string{
+				"username": "Username is already taken.",
+			})
 		}
 		return nil, err
 	}
@@ -170,7 +197,9 @@ func (s *Store) ListFeatureFlags(ctx context.Context) ([]model.FeatureFlag, erro
 
 func (s *Store) SetFeatureFlag(ctx context.Context, key string, enabled bool) error {
 	if strings.TrimSpace(key) == "" {
-		return ErrValidation
+		return NewValidationError("Feature flag key is required.", map[string]string{
+			"key": "Feature flag key is required.",
+		})
 	}
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO feature_flags(key, enabled)
@@ -203,7 +232,9 @@ func (s *Store) GetSettings(ctx context.Context) (model.AppSettings, error) {
 
 func (s *Store) UpdateSettings(ctx context.Context, maxVariants int) (model.AppSettings, error) {
 	if maxVariants < 1 || maxVariants > 50 {
-		return model.AppSettings{}, fmt.Errorf("%w: maxVariantsPerUser must be 1..50", ErrValidation)
+		return model.AppSettings{}, NewValidationError("Please check settings values.", map[string]string{
+			"maxVariantsPerUser": "Value must be between 1 and 50.",
+		})
 	}
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE app_settings
@@ -219,7 +250,9 @@ func (s *Store) UpdateSettings(ctx context.Context, maxVariants int) (model.AppS
 func (s *Store) CreateComparison(ctx context.Context, creatorID int64, name string, participantIDs []int64) (*model.Comparison, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, ErrValidation
+		return nil, NewValidationError("Please fill in required fields.", map[string]string{
+			"name": "Entity name is required.",
+		})
 	}
 	all := []int64{creatorID}
 	seen := map[int64]struct{}{creatorID: {}}
@@ -231,7 +264,9 @@ func (s *Store) CreateComparison(ctx context.Context, creatorID int64, name stri
 		all = append(all, id)
 	}
 	if len(all) > 5 {
-		return nil, fmt.Errorf("%w: max 5 users per comparison", ErrLimitExceeded)
+		return nil, NewValidationError("Too many participants selected.", map[string]string{
+			"participantIds": "You can select up to 4 additional participants.",
+		})
 	}
 
 	// Ensure all requested users exist.
@@ -242,7 +277,9 @@ func (s *Store) CreateComparison(ctx context.Context, creatorID int64, name stri
 			return nil, err
 		}
 		if !exists {
-			return nil, fmt.Errorf("%w: user %d does not exist", ErrValidation, uid)
+			return nil, NewValidationError("One of selected participants does not exist anymore.", map[string]string{
+				"participantIds": "Please reselect participants and try again.",
+			})
 		}
 	}
 
@@ -438,7 +475,9 @@ func (s *Store) CreateVariant(ctx context.Context, comparisonID, userID int64, i
 	title = strings.TrimSpace(title)
 	description = strings.TrimSpace(description)
 	if title == "" {
-		return nil, ErrValidation
+		return nil, NewValidationError("Please fill in required fields.", map[string]string{
+			"title": "Variant title is required.",
+		})
 	}
 	ok, err := s.hasComparisonAccess(ctx, comparisonID, userID, isAdmin)
 	if err != nil {
@@ -460,7 +499,9 @@ func (s *Store) CreateVariant(ctx context.Context, comparisonID, userID int64, i
 		return nil, err
 	}
 	if cnt >= settings.MaxVariantsPerUser {
-		return nil, fmt.Errorf("%w: max variants per user reached (%d)", ErrLimitExceeded, settings.MaxVariantsPerUser)
+		return nil, NewValidationError("You reached the variants limit for this comparison.", map[string]string{
+			"title": fmt.Sprintf("Maximum variants per user: %d.", settings.MaxVariantsPerUser),
+		})
 	}
 
 	var v model.Variant
@@ -482,7 +523,9 @@ func (s *Store) CreateVariant(ctx context.Context, comparisonID, userID int64, i
 
 func (s *Store) RateVariant(ctx context.Context, variantID, userID int64, isAdmin bool, pros, cons string, rank int) error {
 	if rank < 1 || rank > 10 {
-		return fmt.Errorf("%w: rank must be 1..10", ErrValidation)
+		return NewValidationError("Please check form fields.", map[string]string{
+			"rank": "Rank must be between 1 and 10.",
+		})
 	}
 	var comparisonID int64
 	err := s.db.QueryRowContext(ctx, `SELECT comparison_id FROM variants WHERE id = $1`, variantID).Scan(&comparisonID)

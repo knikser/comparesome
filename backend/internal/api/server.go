@@ -117,6 +117,22 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
+type errorResponse struct {
+	Error       string            `json:"error"`
+	FieldErrors map[string]string `json:"fieldErrors,omitempty"`
+}
+
+func writeAPIError(w http.ResponseWriter, status int, message string, fieldErrors map[string]string) {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		message = "Request failed."
+	}
+	writeJSON(w, status, errorResponse{
+		Error:       message,
+		FieldErrors: fieldErrors,
+	})
+}
+
 func decodeJSON(r *http.Request, target any) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
@@ -126,17 +142,28 @@ func handleServiceError(w http.ResponseWriter, err error) {
 	case err == nil:
 		return
 	case errors.Is(err, service.ErrUnauthorized):
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
+		writeAPIError(w, http.StatusUnauthorized, "Authentication failed. Please sign in and try again.", nil)
 	case errors.Is(err, service.ErrForbidden):
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+		writeAPIError(w, http.StatusForbidden, "You do not have access to perform this action.", nil)
 	case errors.Is(err, service.ErrNotFound):
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		writeAPIError(w, http.StatusNotFound, "Requested resource was not found.", nil)
 	case errors.Is(err, service.ErrLimitExceeded):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		message := strings.TrimSpace(err.Error())
+		if message == "" || strings.EqualFold(message, service.ErrLimitExceeded.Error()) {
+			message = "Request exceeds allowed limits."
+		}
+		writeAPIError(w, http.StatusBadRequest, message, nil)
 	case errors.Is(err, service.ErrValidation):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		message, fieldErrors, ok := service.GetValidationDetails(err)
+		if !ok || message == "" {
+			message = strings.TrimSpace(err.Error())
+		}
+		if message == "" || strings.EqualFold(message, service.ErrValidation.Error()) {
+			message = "Please check the highlighted fields."
+		}
+		writeAPIError(w, http.StatusBadRequest, message, fieldErrors)
 	default:
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+		writeAPIError(w, http.StatusInternalServerError, "Internal server error.", nil)
 	}
 }
 
@@ -148,7 +175,7 @@ type loginRequest struct {
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	user, err := s.store.Authenticate(r.Context(), req.Username, req.Password)
@@ -168,7 +195,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing claims"})
+		writeAPIError(w, http.StatusUnauthorized, "Authentication failed. Please sign in again.", nil)
 		return
 	}
 	user, err := s.store.GetUserByID(r.Context(), claims.UserID)
@@ -187,12 +214,12 @@ type changePasswordRequest struct {
 func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	if claims == nil {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing claims"})
+		writeAPIError(w, http.StatusUnauthorized, "Authentication failed. Please sign in again.", nil)
 		return
 	}
 	var req changePasswordRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	if err := s.store.ChangePassword(r.Context(), claims.UserID, req.OldPassword, req.NewPassword); err != nil {
@@ -240,7 +267,7 @@ func (s *Server) createComparison(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	var req createComparisonRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	cmp, err := s.store.CreateComparison(r.Context(), claims.UserID, req.Name, req.ParticipantIDs)
@@ -269,7 +296,7 @@ func (s *Server) getComparison(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	id, err := parseIDParam(r, "comparisonID")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid comparison id"})
+		writeAPIError(w, http.StatusBadRequest, "Comparison ID is invalid.", nil)
 		return
 	}
 	cmp, err := s.store.GetComparison(r.Context(), id, claims.UserID, claims.IsAdmin)
@@ -289,12 +316,12 @@ func (s *Server) createVariant(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	comparisonID, err := parseIDParam(r, "comparisonID")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid comparison id"})
+		writeAPIError(w, http.StatusBadRequest, "Comparison ID is invalid.", nil)
 		return
 	}
 	var req createVariantRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	variant, err := s.store.CreateVariant(r.Context(), comparisonID, claims.UserID, claims.IsAdmin, req.Title, req.Description)
@@ -315,12 +342,12 @@ func (s *Server) rateVariant(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetClaims(r.Context())
 	variantID, err := parseIDParam(r, "variantID")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid variant id"})
+		writeAPIError(w, http.StatusBadRequest, "Variant ID is invalid.", nil)
 		return
 	}
 	var req rateVariantRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	err = s.store.RateVariant(r.Context(), variantID, claims.UserID, claims.IsAdmin, req.Pros, req.Cons, req.Rank)
@@ -344,7 +371,7 @@ type adminCreateUserRequest struct {
 func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) {
 	var req adminCreateUserRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	user, err := s.store.CreateUser(r.Context(), req.Username, req.Password, req.IsAdmin)
@@ -372,7 +399,7 @@ func (s *Server) adminUpdateFeatureFlag(w http.ResponseWriter, r *http.Request) 
 	key := strings.TrimSpace(chi.URLParam(r, "key"))
 	var req updateFeatureFlagRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	if err := s.store.SetFeatureFlag(r.Context(), key, req.Enabled); err != nil {
@@ -398,7 +425,7 @@ type updateSettingsRequest struct {
 func (s *Server) adminUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var req updateSettingsRequest
 	if err := decodeJSON(r, &req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		writeAPIError(w, http.StatusBadRequest, "Request payload is invalid.", nil)
 		return
 	}
 	settings, err := s.store.UpdateSettings(r.Context(), req.MaxVariantsPerUser)

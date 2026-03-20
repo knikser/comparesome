@@ -9,6 +9,7 @@ export function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState('admin');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   if (!token || !user) {
@@ -23,6 +24,7 @@ export function ChangePasswordPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
     try {
       const response = await api.changePassword(token, oldPassword, newPassword);
       login(response.token, response.user);
@@ -30,6 +32,7 @@ export function ChangePasswordPage() {
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Password change failed';
       setError(message);
+      setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setLoading(false);
     }
@@ -43,22 +46,38 @@ export function ChangePasswordPage() {
         <div className="mb-3">
           <label className="form-label">Current password</label>
           <input
-            className="form-control"
+            className={`form-control ${fieldErrors.oldPassword ? 'is-invalid' : ''}`}
             type="password"
             value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
+            onChange={(e) => {
+              setOldPassword(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.oldPassword;
+                return next;
+              });
+            }}
             autoComplete="current-password"
           />
+          {fieldErrors.oldPassword ? <div className="invalid-feedback">{fieldErrors.oldPassword}</div> : null}
         </div>
         <div className="mb-3">
           <label className="form-label">New password (min 6 chars)</label>
           <input
-            className="form-control"
+            className={`form-control ${fieldErrors.newPassword ? 'is-invalid' : ''}`}
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.newPassword;
+                return next;
+              });
+            }}
             autoComplete="new-password"
           />
+          {fieldErrors.newPassword ? <div className="invalid-feedback">{fieldErrors.newPassword}</div> : null}
         </div>
         {error ? <div className="alert alert-danger py-2">{error}</div> : null}
         <button disabled={loading} type="submit" className="btn btn-primary w-100 mt-2">
