@@ -11,6 +11,7 @@ export function ComparisonsPage() {
   const [name, setName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
@@ -45,6 +46,11 @@ export function ComparisonsPage() {
       }
       return [...prev, id];
     });
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.participantIds;
+      return next;
+    });
   };
 
   const onCreate = async (e: FormEvent) => {
@@ -54,6 +60,7 @@ export function ComparisonsPage() {
     }
     setLoading(true);
     setError('');
+    setFieldErrors({});
     try {
       await api.createComparison(token, name, selectedUsers);
       setName('');
@@ -61,6 +68,7 @@ export function ComparisonsPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create comparison');
+      setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setLoading(false);
     }
@@ -75,10 +83,25 @@ export function ComparisonsPage() {
           <form onSubmit={onCreate}>
             <div className="mb-4">
               <label className="field-label">Entity name</label>
-              <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} required />
+              <input
+                className={`text-input ${fieldErrors.name ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setFieldErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.name;
+                    return next;
+                  });
+                }}
+                required
+              />
+              {fieldErrors.name ? <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p> : null}
             </div>
             <p className="mb-2 text-sm font-medium text-slate-700">Select up to 4 additional participants:</p>
-            <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div
+              className={`mb-4 grid grid-cols-1 gap-2 rounded-xl p-2 sm:grid-cols-2 ${fieldErrors.participantIds ? 'border border-red-200 bg-red-50/50' : ''}`}
+            >
               {availableUsers.map((candidate) => (
                 <label
                   key={candidate.id}
@@ -94,6 +117,7 @@ export function ComparisonsPage() {
                 </label>
               ))}
             </div>
+            {fieldErrors.participantIds ? <p className="mb-3 text-sm text-red-600">{fieldErrors.participantIds}</p> : null}
             <div className="mb-4">
               <span className="chip">
                 Selected users: {selectedUsers.length}/4 (you are included automatically)

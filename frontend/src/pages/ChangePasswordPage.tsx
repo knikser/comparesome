@@ -9,6 +9,7 @@ export function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState('admin');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   if (!token || !user) {
@@ -23,6 +24,7 @@ export function ChangePasswordPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
     try {
       const response = await api.changePassword(token, oldPassword, newPassword);
       login(response.token, response.user);
@@ -30,6 +32,7 @@ export function ChangePasswordPage() {
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Password change failed';
       setError(message);
+      setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setLoading(false);
     }
@@ -43,22 +46,38 @@ export function ChangePasswordPage() {
         <div className="mb-4">
           <label className="field-label">Current password</label>
           <input
-            className="text-input"
+            className={`text-input ${fieldErrors.oldPassword ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             type="password"
             value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
+            onChange={(e) => {
+              setOldPassword(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.oldPassword;
+                return next;
+              });
+            }}
             autoComplete="current-password"
           />
+          {fieldErrors.oldPassword ? <p className="mt-1 text-sm text-red-600">{fieldErrors.oldPassword}</p> : null}
         </div>
         <div className="mb-4">
           <label className="field-label">New password (min 6 chars)</label>
           <input
-            className="text-input"
+            className={`text-input ${fieldErrors.newPassword ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              setFieldErrors((prev) => {
+                const next = { ...prev };
+                delete next.newPassword;
+                return next;
+              });
+            }}
             autoComplete="new-password"
           />
+          {fieldErrors.newPassword ? <p className="mt-1 text-sm text-red-600">{fieldErrors.newPassword}</p> : null}
         </div>
         {error ? <div className="error-banner">{error}</div> : null}
         <button disabled={loading} type="submit" className="primary-btn mt-4 w-full">

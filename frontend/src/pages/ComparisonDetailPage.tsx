@@ -21,9 +21,11 @@ export function ComparisonDetailPage() {
   const params = useParams();
   const comparisonId = Number(params.id);
   const [detail, setDetail] = useState<ComparisonDetail | null>(null);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [createVariantError, setCreateVariantError] = useState('');
+  const [createVariantFieldErrors, setCreateVariantFieldErrors] = useState<Record<string, string>>({});
   const [creatingVariant, setCreatingVariant] = useState(false);
 
   const load = async () => {
@@ -33,8 +35,9 @@ export function ComparisonDetailPage() {
     try {
       const data = await api.comparisonDetail(token, comparisonId);
       setDetail(data);
+      setLoadError('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load comparison');
+      setLoadError(err instanceof ApiError ? err.message : 'Failed to load comparison');
     }
   };
 
@@ -48,13 +51,16 @@ export function ComparisonDetailPage() {
       return;
     }
     setCreatingVariant(true);
+    setCreateVariantError('');
+    setCreateVariantFieldErrors({});
     try {
       await api.createVariant(token, comparisonId, title, description);
       setTitle('');
       setDescription('');
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add variant');
+      setCreateVariantError(err instanceof ApiError ? err.message : 'Failed to add variant');
+      setCreateVariantFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setCreatingVariant(false);
     }
@@ -64,16 +70,12 @@ export function ComparisonDetailPage() {
     if (!token) {
       return;
     }
-    try {
-      await api.rateVariant(token, variantId, rank, pros, cons);
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to rate variant');
-    }
+    await api.rateVariant(token, variantId, rank, pros, cons);
+    await load();
   };
 
-  if (error) {
-    return <div className="error-banner">{error}</div>;
+  if (loadError) {
+    return <div className="error-banner">{loadError}</div>;
   }
   if (!detail) {
     return <div className="loading-banner">Loading comparison...</div>;
@@ -91,7 +93,22 @@ export function ComparisonDetailPage() {
         <form onSubmit={onCreateVariant}>
           <div className="mb-4">
             <label className="field-label">Variant title</label>
-            <input className="text-input" value={title} onChange={(e) => setTitle(e.target.value)} required />
+            <input
+              className={`text-input ${createVariantFieldErrors.title ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setCreateVariantFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.title;
+                  return next;
+                });
+              }}
+              required
+            />
+            {createVariantFieldErrors.title ? (
+              <p className="mt-1 text-sm text-red-600">{createVariantFieldErrors.title}</p>
+            ) : null}
           </div>
           <div className="mb-4">
             <label className="field-label">Description</label>
@@ -99,9 +116,17 @@ export function ComparisonDetailPage() {
               className="text-input"
               rows={3}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setCreateVariantFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.description;
+                  return next;
+                });
+              }}
             />
           </div>
+          {createVariantError ? <div className="error-banner mb-4">{createVariantError}</div> : null}
           <button type="submit" className="primary-btn" disabled={creatingVariant}>
             {creatingVariant ? 'Adding...' : 'Add variant'}
           </button>
@@ -138,13 +163,20 @@ function VariantCard({
   const [rank, setRank] = useState(variant.ratings.find((r) => r.username === username)?.rank ?? 5);
   const [pros, setPros] = useState(variant.ratings.find((r) => r.username === username)?.pros ?? '');
   const [cons, setCons] = useState(variant.ratings.find((r) => r.username === username)?.cons ?? '');
+  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError('');
+    setFieldErrors({});
     try {
       await onRateVariant(variant.id, rank, pros, cons);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save rating');
+      setFieldErrors(err instanceof ApiError ? err.fieldErrors : {});
     } finally {
       setSaving(false);
     }
@@ -164,21 +196,53 @@ function VariantCard({
           <div className="md:col-span-3">
             <label className="field-label">Rank (1..10)</label>
             <input
-              className="text-input"
+              className={`text-input ${fieldErrors.rank ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
               type="number"
               min={1}
               max={10}
               value={rank}
-              onChange={(e) => setRank(Number(e.target.value))}
+              onChange={(e) => {
+                setRank(Number(e.target.value));
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.rank;
+                  return next;
+                });
+              }}
             />
+            {fieldErrors.rank ? <p className="mt-1 text-sm text-red-600">{fieldErrors.rank}</p> : null}
           </div>
           <div className="md:col-span-4">
             <label className="field-label">Pros</label>
-            <input className="text-input" value={pros} onChange={(e) => setPros(e.target.value)} />
+            <input
+              className={`text-input ${fieldErrors.pros ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
+              value={pros}
+              onChange={(e) => {
+                setPros(e.target.value);
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.pros;
+                  return next;
+                });
+              }}
+            />
+            {fieldErrors.pros ? <p className="mt-1 text-sm text-red-600">{fieldErrors.pros}</p> : null}
           </div>
           <div className="md:col-span-4">
             <label className="field-label">Cons</label>
-            <input className="text-input" value={cons} onChange={(e) => setCons(e.target.value)} />
+            <input
+              className={`text-input ${fieldErrors.cons ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''}`}
+              value={cons}
+              onChange={(e) => {
+                setCons(e.target.value);
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.cons;
+                  return next;
+                });
+              }}
+            />
+            {fieldErrors.cons ? <p className="mt-1 text-sm text-red-600">{fieldErrors.cons}</p> : null}
           </div>
           <div className="md:col-span-1 md:self-end">
             <button type="submit" className="ghost-btn w-full" disabled={saving}>
@@ -187,6 +251,7 @@ function VariantCard({
           </div>
         </div>
       </form>
+      {error ? <div className="error-banner mt-3">{error}</div> : null}
 
       {variant.ratings.length > 0 ? (
         <details className="mt-3 rounded-lg border border-slate-200 bg-white/80 p-3">
