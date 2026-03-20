@@ -1,6 +1,6 @@
-# comparesome
+# сравнилка
 
-CompaResome is a monorepo app for personal comparison and ranking with shared participants.
+сравнилка is a monorepo app for personal comparison and ranking with shared participants.
 
 ## Stack
 

@@ -21,7 +21,7 @@ export function AppLayout() {
       <header className="surface-card mb-5 p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-sm font-semibold text-blue-700">CompaResome</p>
+            <p className="text-sm font-semibold text-blue-700">сравнилка</p>
             <h1 className="text-2xl font-bold text-slate-900">Decision workspace</h1>
           </div>
           <nav className="flex flex-wrap gap-2">
