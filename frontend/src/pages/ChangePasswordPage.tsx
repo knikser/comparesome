@@ -37,19 +37,31 @@ export function ChangePasswordPage() {
 
   return (
     <div className="auth-screen">
-      <form className="card" onSubmit={onSubmit}>
-        <h2>Change your password</h2>
-        <p>The first login requires changing the default admin password.</p>
-        <label>
-          Current password
-          <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
-        </label>
-        <label>
-          New password (min 6 chars)
-          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-        </label>
-        {error ? <p className="error">{error}</p> : null}
-        <button disabled={loading} type="submit">
+      <form className="card section-card auth-card p-4" onSubmit={onSubmit}>
+        <h2 className="h4 mb-1">Change your password</h2>
+        <p className="subtle-text mb-4">First login requires changing the default admin password.</p>
+        <div className="mb-3">
+          <label className="form-label">Current password</label>
+          <input
+            className="form-control"
+            type="password"
+            value={oldPassword}
+            onChange={(e) => setOldPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">New password (min 6 chars)</label>
+          <input
+            className="form-control"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+        </div>
+        {error ? <div className="alert alert-danger py-2">{error}</div> : null}
+        <button disabled={loading} type="submit" className="btn btn-primary w-100 mt-2">
           {loading ? 'Updating...' : 'Update password'}
         </button>
       </form>

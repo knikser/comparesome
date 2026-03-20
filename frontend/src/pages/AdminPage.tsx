@@ -77,73 +77,127 @@ export function AdminPage() {
   };
 
   return (
-    <div className="stack">
-      {error ? <p className="error">{error}</p> : null}
-      <section className="card">
-        <h2>Create user</h2>
-        <form onSubmit={onCreateUser} className="grid two-columns">
-          <label>
-            Username
-            <input value={username} onChange={(e) => setUsername(e.target.value)} required />
-          </label>
-          <label>
-            Password
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </label>
-          <label>
-            Admin user
-            <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} />
-          </label>
-          <div>
-            <button type="submit">Create user</button>
-          </div>
-        </form>
-      </section>
-
-      <section className="card">
-        <h2>Users</h2>
-        <ul>
-          {users.map((item) => (
-            <li key={item.id}>
-              {item.username} {item.isAdmin ? '(admin)' : ''} {item.mustChangePassword ? ' [must change password]' : ''}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="card">
-        <h2>Feature flags</h2>
-        <ul>
-          {flags.map((flag) => (
-            <li key={flag.key}>
-              {flag.key} - {flag.enabled ? 'enabled' : 'disabled'}{' '}
-              <button onClick={() => onToggleFlag(flag)}>Toggle</button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="card">
-        <h2>Settings</h2>
-        {settings ? (
-          <form onSubmit={onUpdateSettings} className="grid two-columns">
-            <label>
-              Max variants per user per comparison
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={settings.maxVariantsPerUser}
-                onChange={(e) => setSettings({ ...settings, maxVariantsPerUser: Number(e.target.value) })}
-              />
-            </label>
-            <div>
-              <button type="submit">Save settings</button>
+    <div className="d-grid gap-4">
+      {error ? <div className="alert alert-danger mb-0">{error}</div> : null}
+      <section className="card section-card">
+        <div className="card-body">
+          <h2 className="h5 page-title">Create user</h2>
+          <form onSubmit={onCreateUser}>
+            <div className="row g-3">
+              <div className="col-12 col-md-5">
+                <label className="form-label">Username</label>
+                <input
+                  className="form-control"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="col-12 col-md-5">
+                <label className="form-label">Password</label>
+                <input
+                  className="form-control"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="col-12 col-md-2 d-flex align-items-end">
+                <div className="form-check form-switch mb-2">
+                  <input
+                    className="form-check-input"
+                    id="admin-user-switch"
+                    type="checkbox"
+                    checked={isAdmin}
+                    onChange={(e) => setIsAdmin(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="admin-user-switch">
+                    Admin
+                  </label>
+                </div>
+              </div>
+              <div className="col-12">
+                <button type="submit" className="btn btn-primary">
+                  Create user
+                </button>
+              </div>
             </div>
           </form>
-        ) : (
-          <p>Loading settings...</p>
-        )}
+        </div>
+      </section>
+
+      <section className="card section-card">
+        <div className="card-body">
+          <h2 className="h5 page-title">Users</h2>
+          <ul className="list-group list-group-flush">
+            {users.map((item) => (
+              <li key={item.id} className="list-group-item px-0 d-flex justify-content-between gap-2">
+                <span>{item.username}</span>
+                <div className="d-flex flex-wrap gap-1">
+                  {item.isAdmin ? <span className="badge text-bg-primary">admin</span> : null}
+                  {item.mustChangePassword ? <span className="badge text-bg-warning">must change password</span> : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="card section-card">
+        <div className="card-body">
+          <h2 className="h5 page-title">Feature flags</h2>
+          <ul className="list-group list-group-flush">
+            {flags.map((flag) => (
+              <li key={flag.key} className="list-group-item px-0 d-flex justify-content-between align-items-center">
+                <span>{flag.key}</span>
+                <div className="d-flex align-items-center gap-2">
+                  <span className={`badge ${flag.enabled ? 'text-bg-success' : 'text-bg-secondary'}`}>
+                    {flag.enabled ? 'enabled' : 'disabled'}
+                  </span>
+                  <button onClick={() => onToggleFlag(flag)} type="button" className="btn btn-sm btn-outline-secondary">
+                    Toggle
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="card section-card">
+        <div className="card-body">
+          <h2 className="h5 page-title">Settings</h2>
+          {settings ? (
+            <form onSubmit={onUpdateSettings}>
+              <div className="row g-3 align-items-end">
+                <div className="col-12 col-md-5">
+                  <label className="form-label">Max variants per user per comparison</label>
+                  <input
+                    className="form-control"
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={settings.maxVariantsPerUser}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        maxVariantsPerUser: Number(e.target.value)
+                      })
+                    }
+                  />
+                </div>
+                <div className="col-12 col-md-auto">
+                  <button type="submit" className="btn btn-primary">
+                    Save settings
+                  </button>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <p className="mb-0">Loading settings...</p>
+          )}
+        </div>
       </section>
     </div>
   );
